@@ -229,6 +229,10 @@ The built-in UI at `http://localhost:8000/` supports:
 - **World view**: toggle between "classic" and "world" dashboard views; world view displays an isometric agent office visualization where active workers appear at desks
 - **Keyboard navigation** (world view only): use arrow keys or WASD to move the player character around the office; WASD keys are disabled when typing in input fields to allow normal text entry
 
+<p align="center">
+  <img src="media/FrontEndReact.png" alt="React frontend — agent office world view" width="800" />
+</p>
+
 ```bash
 # Visit the built-in UI in your browser:
 # http://localhost:8000/
