@@ -16,7 +16,8 @@ type Backend =
   | "codexcli"
   | "claudecodecli"
   | "goose"
-  | "geminicli";
+  | "geminicli"
+  | "opencodecli";
 
 type BuildResponse = {
   task_id: string;
@@ -322,6 +323,13 @@ const PROVIDER_CHARACTER_DEFAULTS: Record<string, CharacterStyle> = {
     outlineColor: "#2f1b63",
     variant: "bot-round",
   },
+  opencode: {
+    bodyColor: "#0d9488",
+    accentColor: "#ccfbf1",
+    skinColor: "#d5f5f0",
+    outlineColor: "#134e4a",
+    variant: "bot-alpha",
+  },
   other: DEFAULT_CHARACTER_STYLE,
 };
 
@@ -340,6 +348,9 @@ function providerFromBackend(backend: string): string {
   }
   if (normalized.includes("codex") || normalized.includes("openai")) {
     return "openai";
+  }
+  if (normalized.includes("opencode")) {
+    return "opencode";
   }
   if (normalized.includes("goose")) {
     return "goose";
@@ -362,6 +373,9 @@ function providerFromBackend(backend: string): string {
 function formatProviderName(provider: string): string {
   if (provider === "openai") {
     return "OpenAI / Codex";
+  }
+  if (provider === "opencode") {
+    return "OpenCode";
   }
   if (provider === "e2e") {
     return "Smoke Test";

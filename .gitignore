@@ -51,3 +51,6 @@ runs/*
 
 # Celery beat runtime files
 celerybeat-schedule*
+
+# OpenCode config
+opencode.json

@@ -26,6 +26,7 @@ from helping_hands.lib.hands.v1.hand import (
     GeminiCLIHand,
     GooseCLIHand,
     Hand,
+    OpenCodeCLIHand,
 )
 from helping_hands.lib.meta import skills as meta_skills
 from helping_hands.lib.meta.tools import registry as meta_tools
@@ -71,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
             "claudecodecli",
             "goose",
             "geminicli",
+            "opencodecli",
         ),
         default=None,
         help="Run an iterative coding hand in CLI mode.",
@@ -217,6 +219,8 @@ def main(argv: list[str] | None = None) -> None:
                 hand = GooseCLIHand(config, repo_index)
             elif args.backend == "geminicli":
                 hand = GeminiCLIHand(config, repo_index)
+            elif args.backend == "opencodecli":
+                hand = OpenCodeCLIHand(config, repo_index)
             else:
                 hand = BasicAtomicHand(
                     config,

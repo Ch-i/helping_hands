@@ -52,6 +52,7 @@ class BuildRequest(BaseModel):
         "claudecodecli",
         "goose",
         "geminicli",
+        "opencodecli",
     ] = "claudecodecli"
     model: str | None = None
     max_iterations: int = 6
@@ -101,6 +102,7 @@ BackendName = Literal[
     "claudecodecli",
     "goose",
     "geminicli",
+    "opencodecli",
 ]
 
 
@@ -406,6 +408,7 @@ _BACKEND_LOOKUP: dict[str, BackendName] = {
     "claudecodecli": "claudecodecli",
     "goose": "goose",
     "geminicli": "geminicli",
+    "opencodecli": "opencodecli",
 }
 _FLOWER_API_URL_ENV = "HELPING_HANDS_FLOWER_API_URL"
 _FLOWER_API_TIMEOUT_SECONDS_ENV = "HELPING_HANDS_FLOWER_API_TIMEOUT_SECONDS"
@@ -1019,6 +1022,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
                       <option value="claudecodecli">claudecodecli</option>
                       <option value="goose">goose</option>
                       <option value="geminicli">geminicli</option>
+                      <option value="opencodecli">opencodecli</option>
                     </select>
                   </label>
 

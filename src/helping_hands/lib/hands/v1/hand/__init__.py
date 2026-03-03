@@ -19,6 +19,7 @@ from helping_hands.lib.hands.v1.hand.cli import (
     CodexCLIHand,
     GeminiCLIHand,
     GooseCLIHand,
+    OpenCodeCLIHand,
 )
 from helping_hands.lib.hands.v1.hand.e2e import E2EHand
 from helping_hands.lib.hands.v1.hand.iterative import (
@@ -42,4 +43,5 @@ __all__ = [
     "Hand",
     "HandResponse",
     "LangGraphHand",
+    "OpenCodeCLIHand",
 ]

@@ -5,11 +5,13 @@ from helping_hands.lib.hands.v1.hand.cli.claude import ClaudeCodeHand
 from helping_hands.lib.hands.v1.hand.cli.codex import CodexCLIHand
 from helping_hands.lib.hands.v1.hand.cli.gemini import GeminiCLIHand
 from helping_hands.lib.hands.v1.hand.cli.goose import GooseCLIHand
+from helping_hands.lib.hands.v1.hand.cli.opencode import OpenCodeCLIHand
 
 __all__ = [
     "ClaudeCodeHand",
     "CodexCLIHand",
     "GeminiCLIHand",
     "GooseCLIHand",
+    "OpenCodeCLIHand",
     "_TwoPhaseCLIHand",
 ]

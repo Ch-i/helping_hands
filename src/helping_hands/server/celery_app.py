@@ -61,6 +61,7 @@ _SUPPORTED_BACKENDS = {
     "claudecodecli",
     "goose",
     "geminicli",
+    "opencodecli",
 }
 _VERBOSE = os.environ.get("HELPING_HANDS_VERBOSE", "").lower() in ("1", "true", "yes")
 _MAX_STORED_UPDATES = 2000 if _VERBOSE else 200
@@ -353,6 +354,7 @@ def build_feature(
         E2EHand,
         GeminiCLIHand,
         GooseCLIHand,
+        OpenCodeCLIHand,
     )
     from helping_hands.lib.meta import skills as meta_skills
     from helping_hands.lib.meta.tools import registry as meta_tools
@@ -550,6 +552,11 @@ def build_feature(
                 )
             elif runtime_backend == "geminicli":
                 hand = GeminiCLIHand(
+                    config,
+                    repo_index,
+                )
+            elif runtime_backend == "opencodecli":
+                hand = OpenCodeCLIHand(
                     config,
                     repo_index,
                 )
