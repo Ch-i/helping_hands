@@ -21,14 +21,14 @@ try:
     from redbeat.decoder import RedBeatJSONDecoder, RedBeatJSONEncoder
 except ImportError:
     _redbeat_available = False
-    RedBeatSchedulerEntry = None
-    RedBeatJSONDecoder = None
-    RedBeatJSONEncoder = None
+    RedBeatSchedulerEntry = None  # type: ignore[assignment]
+    RedBeatJSONDecoder = None  # type: ignore[assignment]
+    RedBeatJSONEncoder = None  # type: ignore[assignment]
 
 try:
     from croniter import croniter
 except ImportError:
-    croniter = None
+    croniter = None  # type: ignore[assignment]
 
 
 def _check_redbeat() -> None:
@@ -63,10 +63,12 @@ class ScheduledTask:
     backend: str = "claudecodecli"
     model: str | None = None
     max_iterations: int = 6
+    pr_number: int | None = None
     no_pr: bool = False
     enable_execution: bool = False
     enable_web: bool = False
     use_native_cli_auth: bool = False
+    tools: list[str] = field(default_factory=list)
     skills: list[str] = field(default_factory=list)
     enabled: bool = True
     created_at: str = ""
@@ -89,10 +91,12 @@ class ScheduledTask:
             "backend": self.backend,
             "model": self.model,
             "max_iterations": self.max_iterations,
+            "pr_number": self.pr_number,
             "no_pr": self.no_pr,
             "enable_execution": self.enable_execution,
             "enable_web": self.enable_web,
             "use_native_cli_auth": self.use_native_cli_auth,
+            "tools": self.tools,
             "skills": self.skills,
             "enabled": self.enabled,
             "created_at": self.created_at,
@@ -113,10 +117,12 @@ class ScheduledTask:
             backend=data.get("backend", "claudecodecli"),
             model=data.get("model"),
             max_iterations=data.get("max_iterations", 6),
+            pr_number=data.get("pr_number"),
             no_pr=data.get("no_pr", False),
             enable_execution=data.get("enable_execution", False),
             enable_web=data.get("enable_web", False),
             use_native_cli_auth=data.get("use_native_cli_auth", False),
+            tools=data.get("tools", []),
             skills=data.get("skills", []),
             enabled=data.get("enabled", True),
             created_at=data.get("created_at", ""),
@@ -472,6 +478,7 @@ class ScheduleManager:
         result = build_feature.delay(
             repo_path=task.repo_path,
             prompt=task.prompt,
+            pr_number=task.pr_number,
             backend=task.backend,
             model=task.model,
             max_iterations=task.max_iterations,
@@ -479,6 +486,7 @@ class ScheduleManager:
             enable_execution=task.enable_execution,
             enable_web=task.enable_web,
             use_native_cli_auth=task.use_native_cli_auth,
+            tools=task.tools,
             skills=task.skills,
         )
 

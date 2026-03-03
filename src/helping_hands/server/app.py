@@ -6,9 +6,12 @@ Exposes an HTTP API that enqueues repo-building jobs via Celery.
 from __future__ import annotations
 
 import ast
+import contextlib
 import html
 import json
 import os
+import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 from urllib import error as urllib_error
@@ -16,11 +19,12 @@ from urllib import request as urllib_request
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from helping_hands.lib.default_prompts import DEFAULT_SMOKE_TEST_PROMPT
 from helping_hands.lib.meta import skills as meta_skills
+from helping_hands.lib.meta.tools import registry as meta_tools
 from helping_hands.server.celery_app import build_feature, celery_app
 from helping_hands.server.task_result import normalize_task_result
 
@@ -56,7 +60,22 @@ class BuildRequest(BaseModel):
     enable_web: bool = False
     use_native_cli_auth: bool = False
     pr_number: int | None = None
+    tools: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
+
+    @field_validator("tools", mode="before")
+    @classmethod
+    def _coerce_tools(
+        cls, value: str | list[str] | tuple[str, ...] | None
+    ) -> list[str]:
+        normalized = meta_tools.normalize_tool_selection(value)
+        return list(normalized)
+
+    @field_validator("tools")
+    @classmethod
+    def _validate_tools(cls, value: list[str]) -> list[str]:
+        meta_tools.validate_tool_category_names(tuple(value))
+        return value
 
     @field_validator("skills", mode="before")
     @classmethod
@@ -150,12 +169,28 @@ class ScheduleRequest(BaseModel):
     backend: BackendName = "claudecodecli"
     model: str | None = None
     max_iterations: int = Field(default=6, ge=1)
+    pr_number: int | None = None
     no_pr: bool = False
     enable_execution: bool = False
     enable_web: bool = False
     use_native_cli_auth: bool = False
+    tools: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     enabled: bool = True
+
+    @field_validator("tools", mode="before")
+    @classmethod
+    def _coerce_tools(
+        cls, value: str | list[str] | tuple[str, ...] | None
+    ) -> list[str]:
+        normalized = meta_tools.normalize_tool_selection(value)
+        return list(normalized)
+
+    @field_validator("tools")
+    @classmethod
+    def _validate_tools(cls, value: list[str]) -> list[str]:
+        meta_tools.validate_tool_category_names(tuple(value))
+        return value
 
     @field_validator("skills", mode="before")
     @classmethod
@@ -183,10 +218,12 @@ class ScheduleResponse(BaseModel):
     backend: str
     model: str | None = None
     max_iterations: int = 6
+    pr_number: int | None = None
     no_pr: bool = False
     enable_execution: bool = False
     enable_web: bool = False
     use_native_cli_auth: bool = False
+    tools: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     enabled: bool = True
     created_at: str
@@ -215,6 +252,124 @@ class CronPresetsResponse(BaseModel):
     """Response for listing available cron presets."""
 
     presets: dict[str, str]
+
+
+class ClaudeUsageLevel(BaseModel):
+    """A single usage tier (e.g. session or weekly)."""
+
+    name: str
+    percent_used: float
+    detail: str
+
+
+class ClaudeUsageResponse(BaseModel):
+    """Claude Code CLI usage information."""
+
+    levels: list[ClaudeUsageLevel] = Field(default_factory=list)
+    error: str | None = None
+    fetched_at: str
+
+
+def _get_claude_oauth_token() -> str | None:
+    """Read the Claude Code OAuth token from the macOS Keychain."""
+    try:
+        result = subprocess.run(
+            [
+                "security",
+                "find-generic-password",
+                "-s",
+                "Claude Code-credentials",
+                "-w",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        raw = result.stdout.strip()
+        # The keychain value is JSON — extract the OAuth access token
+        try:
+            creds = json.loads(raw)
+            return creds.get("claudeAiOauth", {}).get("accessToken")
+        except (json.JSONDecodeError, AttributeError):
+            # Maybe stored as plain token
+            return raw if raw.startswith("ey") else None
+    except Exception:
+        return None
+
+
+def _fetch_claude_usage() -> ClaudeUsageResponse:
+    """Fetch Claude Code usage via the Anthropic OAuth usage API."""
+    now = datetime.now(UTC).isoformat()
+
+    token = _get_claude_oauth_token()
+    if not token:
+        return ClaudeUsageResponse(
+            error="Could not read Claude Code credentials from Keychain",
+            fetched_at=now,
+        )
+
+    try:
+        req = urllib_request.Request(
+            "https://api.anthropic.com/api/oauth/usage",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "anthropic-beta": "oauth-2025-04-20",
+                "User-Agent": "claude-code/2.0.32",
+            },
+        )
+        with urllib_request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+    except urllib_error.HTTPError as exc:
+        body = ""
+        with contextlib.suppress(Exception):
+            body = exc.read().decode()[:200]
+        return ClaudeUsageResponse(
+            error=f"Usage API returned {exc.code}: {body}",
+            fetched_at=now,
+        )
+    except Exception as exc:
+        return ClaudeUsageResponse(
+            error=f"Usage API request failed: {exc}",
+            fetched_at=now,
+        )
+
+    levels: list[ClaudeUsageLevel] = []
+
+    # Session (5-hour window)
+    five_hour = data.get("five_hour", {})
+    if five_hour.get("utilization") is not None:
+        pct = round(five_hour["utilization"], 1)
+        resets = five_hour.get("resets_at", "")
+        levels.append(
+            ClaudeUsageLevel(
+                name="Session",
+                percent_used=pct,
+                detail=f"Resets {resets}" if resets else "",
+            )
+        )
+
+    # Weekly (7-day window)
+    seven_day = data.get("seven_day", {})
+    if seven_day.get("utilization") is not None:
+        pct = round(seven_day["utilization"], 1)
+        resets = seven_day.get("resets_at", "")
+        levels.append(
+            ClaudeUsageLevel(
+                name="Weekly",
+                percent_used=pct,
+                detail=f"Resets {resets}" if resets else "",
+            )
+        )
+
+    if not levels:
+        return ClaudeUsageResponse(
+            error=f"No usage data in response: {json.dumps(data)[:300]}",
+            fetched_at=now,
+        )
+
+    return ClaudeUsageResponse(levels=levels, fetched_at=now)
 
 
 _TERMINAL_TASK_STATES = {"SUCCESS", "FAILURE", "REVOKED"}
@@ -589,6 +744,40 @@ _UI_HTML = """<!doctype html>
         line-height: 1.35;
         overflow-wrap: anywhere;
       }
+      .usage-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .usage-label {
+        min-width: 56px;
+        font-size: 0.78rem;
+        color: var(--muted);
+        font-family: var(--mono);
+      }
+      .usage-track {
+        flex: 1;
+        height: 10px;
+        background: #1e293b;
+        border-radius: 5px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+      .usage-fill {
+        height: 100%;
+        border-radius: 4px;
+        background: #22d3ee;
+        transition: width 0.4s ease;
+      }
+      .usage-fill.warn { background: #facc15; }
+      .usage-fill.crit { background: #f87171; }
+      .usage-pct {
+        min-width: 32px;
+        text-align: right;
+        font-size: 0.78rem;
+        font-family: var(--mono);
+        color: var(--muted);
+      }
       .output-pane {
         margin-top: 12px;
       }
@@ -708,6 +897,56 @@ _UI_HTML = """<!doctype html>
         align-items: center;
         gap: 6px;
       }
+      .toast-container {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 200;
+        pointer-events: none;
+      }
+      .toast {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #111b31;
+        border: 1px solid #1f2937;
+        border-left: 3px solid #94a3b8;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.8rem;
+        color: #e2e8f0;
+        backdrop-filter: blur(8px);
+        pointer-events: auto;
+        animation: toast-slide-in 0.3s ease-out;
+        min-width: 240px;
+        max-width: 380px;
+      }
+      .toast--ok { border-left-color: #22c55e; }
+      .toast--fail { border-left-color: #ef4444; }
+      .toast-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .toast-close {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 1.1rem;
+        padding: 0 2px;
+        line-height: 1;
+      }
+      .toast-close:hover { color: #e2e8f0; }
+      @keyframes toast-slide-in {
+        from { opacity: 0; transform: translateX(100%); }
+        to { opacity: 1; transform: translateX(0); }
+      }
     </style>
   </head>
   <body>
@@ -772,7 +1011,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
                   <label for="backend">
                     Backend
                     <select id="backend" name="backend">
-                      <option value="e2e">e2e</option>
+                      <option value="e2e">Smoke Test (internal)</option>
                       <option value="basic-langgraph">basic-langgraph</option>
                       <option value="basic-atomic">basic-atomic</option>
                       <option value="basic-agent">basic-agent</option>
@@ -785,7 +1024,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
 
                   <label for="model">
                     Model (optional)
-                    <input id="model" name="model" placeholder="gpt-5.2" />
+                    <input id="model" name="model" placeholder="claude-opus-4-6" />
                   </label>
                 </div>
 
@@ -807,12 +1046,21 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
                   </label>
                 </div>
 
+                <label for="tools">
+                  Tools (comma-separated, optional)
+                  <input
+                    id="tools"
+                    name="tools"
+                    placeholder="execution,web"
+                  />
+                </label>
+
                 <label for="skills">
                   Skills (comma-separated, optional)
                   <input
                     id="skills"
                     name="skills"
-                    placeholder="execution,web,prd,ralph"
+                    placeholder="prd,ralph"
                   />
                 </label>
 
@@ -902,6 +1150,21 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
           </article>
         </section>
 
+        <section id="claude-usage-view" class="card" style="margin-bottom: 16px;">
+          <header class="header" style="margin-bottom: 8px;">
+            <h1 style="display:flex;align-items:center;gap:8px;">
+              Claude Usage
+              <button type="button" id="usage-refresh-btn" class="secondary"
+                style="font-size:0.7rem;padding:3px 8px;">Refresh</button>
+            </h1>
+          </header>
+          <div id="usage-meters" style="display:grid;gap:8px;">
+            <span style="color:#94a3b8;font-size:0.8rem;">Loading...</span>
+          </div>
+          <div id="usage-error" style="color:#fca5a5;font-size:0.78rem;display:none;margin-top:4px;"></div>
+          <div id="usage-timestamp" style="color:#64748b;font-size:0.7rem;margin-top:6px;"></div>
+        </section>
+
         <section id="schedules-view" class="card is-hidden">
           <header class="header">
             <h1>Scheduled tasks <span class="server-ui-badge">cron</span></h1>
@@ -976,9 +1239,13 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
                     </label>
                     <label for="schedule_model">
                       Model (optional)
-                      <input id="schedule_model" name="model" placeholder="gpt-5.2" />
+                      <input id="schedule_model" name="model" placeholder="claude-opus-4-6" />
                     </label>
                   </div>
+                  <label for="schedule_pr_number">
+                    PR number (optional)
+                    <input id="schedule_pr_number" name="pr_number" type="number" min="1" />
+                  </label>
                   <div class="row check-grid">
                     <label class="check-row" for="schedule_no_pr">
                       <input id="schedule_no_pr" name="no_pr" type="checkbox" />
@@ -1099,6 +1366,43 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
           return value || "-";
         }
         return `${value.slice(0, 10)}...${value.slice(-8)}`;
+      }
+
+      let toastCounter = 0;
+      const toastContainerEl = document.getElementById("toast-container");
+
+      function showToast(tid, tStatus) {
+        const tone = statusTone(tStatus);
+        const el = document.createElement("div");
+        el.className = "toast toast--" + tone;
+        el.innerHTML =
+          '<span class="toast-text">Task ' + shortTaskId(tid) + " \u2014 " + tStatus + "</span>" +
+          '<button class="toast-close" aria-label="Dismiss">\u00d7</button>';
+        el.querySelector(".toast-close").onclick = function () { el.remove(); };
+        toastContainerEl.appendChild(el);
+        setTimeout(function () { el.remove(); }, 5000);
+      }
+
+      var _swReg = null;
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/notif-sw.js").then(function(reg) {
+          _swReg = reg;
+        }).catch(function() {});
+      }
+
+      function sendBrowserNotification(tid, tStatus) {
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        var tone = tStatus.toUpperCase() === "SUCCESS" ? "completed successfully" : "failed";
+        var body = "Task " + shortTaskId(tid) + " " + tone;
+        if (_swReg) {
+          _swReg.showNotification("Helping Hands", { body: body, tag: tid });
+        } else {
+          try { new Notification("Helping Hands", { body: body }); } catch(e) {}
+        }
+      }
+
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        Notification.requestPermission();
       }
 
       function statusTone(value) {
@@ -1334,6 +1638,8 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
           status: data.status,
         });
         if (terminalStatuses.has(data.status)) {
+          showToast(data.task_id, data.status);
+          sendBrowserNotification(data.task_id, data.status);
           stopPolling();
         }
       }
@@ -1399,6 +1705,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
         const enableExecution = params.get("enable_execution");
         const enableWeb = params.get("enable_web");
         const useNativeCliAuth = params.get("use_native_cli_auth");
+        const tools = params.get("tools");
         const skills = params.get("skills");
         const taskId = params.get("task_id");
         const status = params.get("status");
@@ -1421,6 +1728,9 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
         }
         if (prNumber) {
           document.getElementById("pr_number").value = prNumber;
+        }
+        if (tools) {
+          document.getElementById("tools").value = tools;
         }
         if (skills) {
           document.getElementById("skills").value = skills;
@@ -1493,6 +1803,54 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
         refreshCurrentTasks();
       }, 5000);
 
+      /* ── Claude Usage Meter ── */
+      const usageMeters = document.getElementById("usage-meters");
+      const usageError = document.getElementById("usage-error");
+      const usageTimestamp = document.getElementById("usage-timestamp");
+      const usageRefreshBtn = document.getElementById("usage-refresh-btn");
+
+      async function refreshClaudeUsage() {
+        try {
+          usageRefreshBtn.disabled = true;
+          const res = await fetch("/health/claude-usage?_=" + Date.now(), { cache: "no-store" });
+          if (!res.ok) {
+            usageMeters.innerHTML = '<span style="color:#94a3b8;font-size:0.8rem;">Unavailable</span>';
+            return;
+          }
+          const data = await res.json();
+          if (data.error) {
+            usageMeters.innerHTML = "";
+            usageError.textContent = data.error;
+            usageError.style.display = "block";
+          } else {
+            usageError.style.display = "none";
+            let html = "";
+            for (const level of data.levels || []) {
+              const pct = Math.min(level.percent_used, 100);
+              const cls = pct >= 90 ? " crit" : pct >= 70 ? " warn" : "";
+              html += '<div class="usage-row">'
+                + '<span class="usage-label">' + level.name + '</span>'
+                + '<div class="usage-track"><div class="usage-fill' + cls + '" style="width:' + pct + '%"></div></div>'
+                + '<span class="usage-pct">' + Math.round(pct) + '%</span>'
+                + '</div>';
+            }
+            usageMeters.innerHTML = html || '<span style="color:#94a3b8;font-size:0.8rem;">No data</span>';
+          }
+          if (data.fetched_at) {
+            const d = new Date(data.fetched_at);
+            usageTimestamp.textContent = "Updated " + d.toLocaleTimeString();
+          }
+        } catch (_) {
+          usageMeters.innerHTML = '<span style="color:#94a3b8;font-size:0.8rem;">Failed to load</span>';
+        } finally {
+          usageRefreshBtn.disabled = false;
+        }
+      }
+
+      refreshClaudeUsage();
+      setInterval(refreshClaudeUsage, 3600000);
+      usageRefreshBtn.addEventListener("click", refreshClaudeUsage);
+
       newSubmissionBtn.addEventListener("click", () => {
         clearForNewSubmission();
       });
@@ -1527,6 +1885,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
         const model = document.getElementById("model").value.trim();
         const maxIterationsRaw = document.getElementById("max_iterations").value.trim();
         const prRaw = document.getElementById("pr_number").value.trim();
+        const toolsRaw = document.getElementById("tools").value.trim();
         const skillsRaw = document.getElementById("skills").value.trim();
         const noPr = document.getElementById("no_pr").checked;
         const enableExecution = document.getElementById("enable_execution").checked;
@@ -1547,6 +1906,12 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
         }
         if (prRaw) {
           payload.pr_number = Number(prRaw);
+        }
+        if (toolsRaw) {
+          payload.tools = toolsRaw
+            .split(",")
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0);
         }
         if (skillsRaw) {
           payload.skills = skillsRaw
@@ -1692,6 +2057,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
           prompt: document.getElementById("schedule_prompt").value,
           backend: document.getElementById("schedule_backend").value,
           model: document.getElementById("schedule_model").value || null,
+          pr_number: document.getElementById("schedule_pr_number").value ? Number(document.getElementById("schedule_pr_number").value) : null,
           no_pr: document.getElementById("schedule_no_pr").checked,
           enabled: document.getElementById("schedule_enabled").checked
         };
@@ -1728,6 +2094,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
           document.getElementById("schedule_prompt").value = s.prompt;
           document.getElementById("schedule_backend").value = s.backend;
           document.getElementById("schedule_model").value = s.model || "";
+          document.getElementById("schedule_pr_number").value = s.pr_number != null ? s.pr_number : "";
           document.getElementById("schedule_no_pr").checked = s.no_pr;
           document.getElementById("schedule_enabled").checked = s.enabled;
 
@@ -1774,6 +2141,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
         }
       };
     </script>
+    <div id="toast-container" class="toast-container"></div>
   </body>
 </html>
 """
@@ -1787,6 +2155,33 @@ def home() -> HTMLResponse:
         html.escape(DEFAULT_SMOKE_TEST_PROMPT),
     )
     return HTMLResponse(rendered)
+
+
+_NOTIF_SW_JS = """\
+self.addEventListener("notificationclick", function(event) {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window" }).then(function(list) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].url && "focus" in list[i]) return list[i].focus();
+      }
+      if (clients.openWindow) return clients.openWindow("/");
+    })
+  );
+});
+"""
+
+
+@app.get("/notif-sw.js")
+def notif_sw() -> Response:
+    """Minimal service worker for OS notifications."""
+    return Response(content=_NOTIF_SW_JS, media_type="application/javascript")
+
+
+@app.get("/health/claude-usage", response_model=ClaudeUsageResponse)
+def get_claude_usage() -> ClaudeUsageResponse:
+    """Return current Claude Code CLI usage metrics."""
+    return _fetch_claude_usage()
 
 
 @app.get("/health")
@@ -1880,6 +2275,7 @@ def _enqueue_build_task(req: BuildRequest) -> BuildResponse:
         enable_execution=req.enable_execution,
         enable_web=req.enable_web,
         use_native_cli_auth=req.use_native_cli_auth,
+        tools=req.tools,
         skills=req.skills,
     )
     return BuildResponse(task_id=task.id, status="queued", backend=req.backend)
@@ -2426,6 +2822,7 @@ def enqueue_build_form(
     enable_web: bool = Form(False),
     use_native_cli_auth: bool = Form(False),
     pr_number: int | None = Form(None),
+    tools: str | None = Form(None),
     skills: str | None = Form(None),
 ) -> RedirectResponse:
     """Fallback form endpoint so UI submits still enqueue without JS."""
@@ -2451,6 +2848,8 @@ def enqueue_build_form(
             query["use_native_cli_auth"] = "1"
         if pr_number is not None:
             query["pr_number"] = str(pr_number)
+        if tools and tools.strip():
+            query["tools"] = tools
         if skills and skills.strip():
             query["skills"] = skills
         return RedirectResponse(url=f"/?{urlencode(query)}", status_code=303)
@@ -2467,6 +2866,7 @@ def enqueue_build_form(
             enable_web=enable_web,
             use_native_cli_auth=use_native_cli_auth,
             pr_number=pr_number,
+            tools=list(meta_tools.normalize_tool_selection(tools)),
             skills=list(meta_skills.normalize_skill_selection(skills)),
         )
     except ValidationError as exc:
@@ -2498,6 +2898,8 @@ def enqueue_build_form(
             query["use_native_cli_auth"] = "1"
         if pr_number is not None:
             query["pr_number"] = str(pr_number)
+        if tools and tools.strip():
+            query["tools"] = tools
         if skills and skills.strip():
             query["skills"] = skills
         return RedirectResponse(url=f"/?{urlencode(query)}", status_code=303)
@@ -2523,6 +2925,8 @@ def enqueue_build_form(
         query["use_native_cli_auth"] = "1"
     if req.pr_number is not None:
         query["pr_number"] = str(req.pr_number)
+    if req.tools:
+        query["tools"] = ",".join(req.tools)
     if req.skills:
         query["skills"] = ",".join(req.skills)
     return RedirectResponse(url=f"/monitor/{response.task_id}", status_code=303)
@@ -2643,10 +3047,12 @@ def _schedule_to_response(task) -> ScheduleResponse:
         backend=task.backend,
         model=task.model,
         max_iterations=task.max_iterations,
+        pr_number=task.pr_number,
         no_pr=task.no_pr,
         enable_execution=task.enable_execution,
         enable_web=task.enable_web,
         use_native_cli_auth=task.use_native_cli_auth,
+        tools=getattr(task, "tools", []),
         skills=task.skills,
         enabled=task.enabled,
         created_at=task.created_at,
@@ -2694,10 +3100,12 @@ def create_schedule(request: ScheduleRequest) -> ScheduleResponse:
         backend=request.backend,
         model=request.model,
         max_iterations=request.max_iterations,
+        pr_number=request.pr_number,
         no_pr=request.no_pr,
         enable_execution=request.enable_execution,
         enable_web=request.enable_web,
         use_native_cli_auth=request.use_native_cli_auth,
+        tools=request.tools,
         skills=request.skills,
         enabled=request.enabled,
     )
@@ -2740,10 +3148,12 @@ def update_schedule(schedule_id: str, request: ScheduleRequest) -> ScheduleRespo
         backend=request.backend,
         model=request.model,
         max_iterations=request.max_iterations,
+        pr_number=request.pr_number,
         no_pr=request.no_pr,
         enable_execution=request.enable_execution,
         enable_web=request.enable_web,
         use_native_cli_auth=request.use_native_cli_auth,
+        tools=request.tools,
         skills=request.skills,
         enabled=request.enabled,
     )

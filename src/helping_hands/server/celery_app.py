@@ -62,9 +62,10 @@ _SUPPORTED_BACKENDS = {
     "goose",
     "geminicli",
 }
-_MAX_STORED_UPDATES = 200
-_MAX_UPDATE_LINE_CHARS = 800
-_BUFFER_FLUSH_CHARS = 180
+_VERBOSE = os.environ.get("HELPING_HANDS_VERBOSE", "").lower() in ("1", "true", "yes")
+_MAX_STORED_UPDATES = 2000 if _VERBOSE else 200
+_MAX_UPDATE_LINE_CHARS = 4000 if _VERBOSE else 800
+_BUFFER_FLUSH_CHARS = 40 if _VERBOSE else 180
 
 
 def _github_clone_url(repo: str) -> str:
@@ -215,6 +216,7 @@ def _update_progress(
     enable_execution: bool,
     enable_web: bool,
     use_native_cli_auth: bool,
+    tools: tuple[str, ...],
     skills: tuple[str, ...],
     workspace: str | None = None,
 ) -> None:
@@ -235,6 +237,7 @@ def _update_progress(
         "enable_execution": enable_execution,
         "enable_web": enable_web,
         "use_native_cli_auth": use_native_cli_auth,
+        "tools": list(tools),
         "skills": list(skills),
         "updates": list(updates),
     }
@@ -260,6 +263,7 @@ async def _collect_stream(
     enable_execution: bool,
     enable_web: bool,
     use_native_cli_auth: bool,
+    tools: tuple[str, ...],
     skills: tuple[str, ...],
     workspace: str | None,
 ) -> str:
@@ -272,7 +276,7 @@ async def _collect_stream(
         parts.append(text)
         collector.feed(text)
         chunk_count += 1
-        if chunk_count % 8 == 0:
+        if chunk_count % (2 if _VERBOSE else 8) == 0:
             _update_progress(
                 task,
                 task_id=task_id,
@@ -289,11 +293,32 @@ async def _collect_stream(
                 enable_execution=enable_execution,
                 enable_web=enable_web,
                 use_native_cli_auth=use_native_cli_auth,
+                tools=tools,
                 skills=skills,
                 workspace=workspace,
             )
 
     collector.flush()
+    _update_progress(
+        task,
+        task_id=task_id,
+        stage="running",
+        updates=updates,
+        prompt=prompt,
+        pr_number=pr_number,
+        backend=backend,
+        runtime_backend=runtime_backend,
+        repo_path=repo_path,
+        model=model,
+        max_iterations=max_iterations,
+        no_pr=no_pr,
+        enable_execution=enable_execution,
+        enable_web=enable_web,
+        use_native_cli_auth=use_native_cli_auth,
+        tools=tools,
+        skills=skills,
+        workspace=workspace,
+    )
     return "".join(parts)
 
 
@@ -310,6 +335,7 @@ def build_feature(
     enable_execution: bool = False,
     enable_web: bool = False,
     use_native_cli_auth: bool = False,
+    tools: list[str] | None = None,
     skills: list[str] | None = None,
 ) -> dict[str, Any]:  # pragma: no cover - exercised in integration
     """Async task: run a hand against a GitHub repo with a user prompt.
@@ -329,11 +355,14 @@ def build_feature(
         GooseCLIHand,
     )
     from helping_hands.lib.meta import skills as meta_skills
+    from helping_hands.lib.meta.tools import registry as meta_tools
     from helping_hands.lib.repo import RepoIndex
 
     task_id = getattr(getattr(self, "request", None), "id", None)
     requested_backend, runtime_backend = _normalize_backend(backend)
     resolved_iterations = max(1, int(max_iterations))
+    selected_tools = meta_tools.normalize_tool_selection(tools)
+    meta_tools.validate_tool_category_names(selected_tools)
     selected_skills = meta_skills.normalize_skill_selection(skills)
     meta_skills.validate_skill_names(selected_skills)
     updates: list[str] = []
@@ -344,6 +373,7 @@ def build_feature(
             f"repo={repo_path}, max_iterations={resolved_iterations}, "
             f"no_pr={no_pr}, enable_execution={enable_execution}, "
             f"enable_web={enable_web}, use_native_cli_auth={use_native_cli_auth}, "
+            f"tools={','.join(selected_tools) or 'none'}, "
             f"skills={','.join(selected_skills) or 'none'}"
         ),
     )
@@ -363,6 +393,7 @@ def build_feature(
         enable_execution=enable_execution,
         enable_web=enable_web,
         use_native_cli_auth=use_native_cli_auth,
+        tools=selected_tools,
         skills=selected_skills,
     )
 
@@ -374,6 +405,7 @@ def build_feature(
                 "enable_execution": enable_execution,
                 "enable_web": enable_web,
                 "use_native_cli_auth": use_native_cli_auth,
+                "enabled_tools": selected_tools,
                 "enabled_skills": selected_skills,
             }
         )
@@ -396,6 +428,7 @@ def build_feature(
             enable_execution=enable_execution,
             enable_web=enable_web,
             use_native_cli_auth=use_native_cli_auth,
+            tools=selected_tools,
             skills=selected_skills,
         )
         response = hand.run(
@@ -428,12 +461,28 @@ def build_feature(
         overrides["enable_execution"] = enable_execution
         overrides["enable_web"] = enable_web
         overrides["use_native_cli_auth"] = use_native_cli_auth
+        overrides["enabled_tools"] = selected_tools
         overrides["enabled_skills"] = selected_skills
         config = Config.from_env(overrides=overrides)
         repo_index = RepoIndex.from_path(Path(config.repo))
 
         if cloned_from:
             _append_update(updates, f"Cloned {cloned_from} to {resolved_repo_path}")
+        if pr_number is not None and cloned_from:
+            _append_update(updates, f"Checking out PR #{pr_number} branch...")
+            from helping_hands.lib.github import GitHubClient as _GHClient
+
+            with _GHClient() as _gh:
+                _pr_info = _gh.get_pr(cloned_from, pr_number)
+                _pr_branch = str(_pr_info["head"])
+                _gh.fetch_branch(resolved_repo_path, _pr_branch)
+                _gh.switch_branch(resolved_repo_path, _pr_branch)
+                _gh.pull(resolved_repo_path, branch=_pr_branch)
+            _append_update(
+                updates,
+                f"Checked out branch {_pr_branch} for PR #{pr_number} (up to date)",
+            )
+            repo_index = RepoIndex.from_path(Path(config.repo))
         if runtime_backend == "codexcli" and not _has_codex_auth():
             msg = (
                 "Codex authentication is missing in worker runtime. "
@@ -472,6 +521,7 @@ def build_feature(
             enable_execution=enable_execution,
             enable_web=enable_web,
             use_native_cli_auth=use_native_cli_auth,
+            tools=selected_tools,
             skills=selected_skills,
             workspace=str(resolved_repo_path),
         )
@@ -528,6 +578,7 @@ def build_feature(
             raise RuntimeError(msg) from exc
 
         hand.auto_pr = not no_pr
+        hand.pr_number = pr_number
         message = asyncio.run(
             _collect_stream(
                 hand,
@@ -545,6 +596,7 @@ def build_feature(
                 enable_execution=enable_execution,
                 enable_web=enable_web,
                 use_native_cli_auth=use_native_cli_auth,
+                tools=selected_tools,
                 skills=selected_skills,
                 workspace=str(resolved_repo_path),
             )
@@ -564,6 +616,7 @@ def build_feature(
             "enable_execution": str(enable_execution).lower(),
             "enable_web": str(enable_web).lower(),
             "use_native_cli_auth": str(use_native_cli_auth).lower(),
+            "tools": list(selected_tools),
             "skills": list(selected_skills),
             "message": message,
             "updates": updates,
@@ -606,6 +659,7 @@ def scheduled_build(
     result = build_feature.delay(
         repo_path=schedule.repo_path,
         prompt=schedule.prompt,
+        pr_number=schedule.pr_number,
         backend=schedule.backend,
         model=schedule.model,
         max_iterations=schedule.max_iterations,
@@ -613,6 +667,7 @@ def scheduled_build(
         enable_execution=schedule.enable_execution,
         enable_web=schedule.enable_web,
         use_native_cli_auth=schedule.use_native_cli_auth,
+        tools=getattr(schedule, "tools", []),
         skills=schedule.skills,
     )
 
@@ -627,3 +682,156 @@ def scheduled_build(
         "prompt": schedule.prompt,
         "repo_path": schedule.repo_path,
     }
+
+
+def _get_db_url_writer() -> str:
+    """Return the DATABASE_URL for writing (must point to a writer role)."""
+    return os.environ.get(
+        "DATABASE_URL",
+        "postgresql://cavern_writer:bQAGOqYIS1TwGipVyUIeDiyz@192.168.1.143:5432/cavern",
+    )
+
+
+_USAGE_TABLE_DDL = """
+CREATE TABLE IF NOT EXISTS claude_usage_log (
+    id SERIAL PRIMARY KEY,
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    session_pct DOUBLE PRECISION,
+    session_resets_at TEXT,
+    weekly_pct DOUBLE PRECISION,
+    weekly_resets_at TEXT,
+    raw_response JSONB
+);
+"""
+
+_USAGE_INSERT = """
+INSERT INTO claude_usage_log
+    (recorded_at, session_pct, session_resets_at, weekly_pct, weekly_resets_at, raw_response)
+VALUES
+    (NOW(), %s, %s, %s, %s, %s);
+"""
+
+
+@celery_app.task(name="helping_hands.log_claude_usage")
+def log_claude_usage() -> dict[str, Any]:
+    """Fetch Claude Code usage from the OAuth API and log it to Postgres."""
+    import json as _json
+    from urllib import error as _url_error
+    from urllib import request as _url_request
+
+    # --- Fetch OAuth token from macOS Keychain ---
+    try:
+        result = subprocess.run(
+            [
+                "security",
+                "find-generic-password",
+                "-s",
+                "Claude Code-credentials",
+                "-w",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        raw = result.stdout.strip() if result.returncode == 0 else ""
+        try:
+            creds = _json.loads(raw)
+            token = creds.get("claudeAiOauth", {}).get("accessToken")
+        except (_json.JSONDecodeError, AttributeError):
+            token = raw if raw.startswith("ey") else None
+    except Exception as exc:
+        return {"status": "error", "message": f"Keychain read failed: {exc}"}
+
+    if not token:
+        return {"status": "error", "message": "No OAuth token found in Keychain"}
+
+    # --- Call the Anthropic usage API ---
+    try:
+        req = _url_request.Request(
+            "https://api.anthropic.com/api/oauth/usage",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "anthropic-beta": "oauth-2025-04-20",
+                "User-Agent": "claude-code/2.0.32",
+            },
+        )
+        with _url_request.urlopen(req, timeout=10) as resp:
+            data = _json.loads(resp.read().decode())
+    except _url_error.HTTPError as exc:
+        return {"status": "error", "message": f"Usage API HTTP {exc.code}"}
+    except Exception as exc:
+        return {"status": "error", "message": f"Usage API failed: {exc}"}
+
+    five_hour = data.get("five_hour", {})
+    seven_day = data.get("seven_day", {})
+    session_pct = five_hour.get("utilization")
+    session_resets = five_hour.get("resets_at")
+    weekly_pct = seven_day.get("utilization")
+    weekly_resets = seven_day.get("resets_at")
+
+    # --- Write to Postgres ---
+    try:
+        import psycopg2
+
+        conn = psycopg2.connect(_get_db_url_writer(), connect_timeout=5)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(_USAGE_TABLE_DDL)
+                cur.execute(
+                    _USAGE_INSERT,
+                    (
+                        session_pct,
+                        session_resets,
+                        weekly_pct,
+                        weekly_resets,
+                        _json.dumps(data),
+                    ),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as exc:
+        return {
+            "status": "error",
+            "message": f"DB write failed: {exc}",
+            "session_pct": session_pct,
+            "weekly_pct": weekly_pct,
+        }
+
+    return {
+        "status": "ok",
+        "session_pct": session_pct,
+        "weekly_pct": weekly_pct,
+    }
+
+
+def ensure_usage_schedule() -> None:
+    """Register the hourly claude-usage logging schedule in RedBeat (idempotent)."""
+    try:
+        from celery.schedules import schedule as interval_schedule
+        from redbeat import RedBeatSchedulerEntry
+
+        entry_name = "helping_hands:usage-logger"
+        try:
+            existing = RedBeatSchedulerEntry.from_key(
+                f"redbeat:{entry_name}", app=celery_app
+            )
+            if existing:
+                return  # already registered
+        except Exception:
+            pass  # doesn't exist yet
+
+        entry = RedBeatSchedulerEntry(
+            name=entry_name,
+            task="helping_hands.log_claude_usage",
+            schedule=interval_schedule(run_every=3600.0),
+            app=celery_app,
+        )
+        entry.save()
+    except Exception:
+        pass  # best-effort; Redis or redbeat may not be available
+
+
+@celery_app.on_after_finalize.connect  # type: ignore[union-attr]
+def _setup_periodic_tasks(sender: Any, **_kwargs: Any) -> None:
+    ensure_usage_schedule()
