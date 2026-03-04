@@ -5,6 +5,7 @@ Index of design documents for helping_hands.
 ## Documents
 
 - [Core Beliefs](core-beliefs.md) — Fundamental design principles
+- [Hand Abstraction](hand-abstraction.md) — Hand class hierarchy and extension model
 
 ## Adding a design doc
 

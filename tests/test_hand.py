@@ -23,6 +23,7 @@ from helping_hands.lib.hands.v1.hand import (
     Hand,
     HandResponse,
     LangGraphHand,
+    OpenCodeCLIHand,
 )
 from helping_hands.lib.meta.tools.command import CommandResult
 from helping_hands.lib.meta.tools.web import (
@@ -2806,6 +2807,217 @@ class TestE2EHand:
         clone_kwargs = mock_gh.clone.call_args.kwargs
         assert clone_kwargs["branch"] is None
         mock_gh.current_branch.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _TwoPhaseCLIHand utility methods
+# ---------------------------------------------------------------------------
+
+
+class TestTwoPhaseCLIHandUtilities:
+    """Direct tests for static/class utility methods on _TwoPhaseCLIHand."""
+
+    def test_truncate_summary_short_string(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        text = "short summary"
+        assert _TwoPhaseCLIHand._truncate_summary(text, limit=100) == "short summary"
+
+    def test_truncate_summary_exact_limit(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        text = "a" * 50
+        result = _TwoPhaseCLIHand._truncate_summary(text, limit=50)
+        assert result == text
+
+    def test_truncate_summary_long_string(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        text = "x" * 200
+        result = _TwoPhaseCLIHand._truncate_summary(text, limit=100)
+        assert result.startswith("x" * 100)
+        assert result.endswith("...[truncated]")
+        assert len(result) < 200
+
+    def test_truncate_summary_strips_whitespace(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        result = _TwoPhaseCLIHand._truncate_summary("  hello  ", limit=100)
+        assert result == "hello"
+
+    def test_is_truthy_true_values(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        for value in ("1", "true", "yes", "on", "TRUE", " Yes ", " ON "):
+            assert _TwoPhaseCLIHand._is_truthy(value) is True, f"expected {value!r} truthy"
+
+    def test_is_truthy_false_values(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        for value in ("0", "false", "no", "off", "", "random"):
+            assert _TwoPhaseCLIHand._is_truthy(value) is False, f"expected {value!r} falsy"
+
+    def test_is_truthy_none(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        assert _TwoPhaseCLIHand._is_truthy(None) is False
+
+    def test_inject_prompt_argument_with_dash_p(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        cmd = ["tool", "-p", "old_prompt", "--flag"]
+        result = _TwoPhaseCLIHand._inject_prompt_argument(cmd, "new_prompt")
+        assert result is True
+        assert cmd == ["tool", "-p", "new_prompt", "--flag"]
+
+    def test_inject_prompt_argument_inserts_after_flag(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        cmd = ["tool", "-p", "--next-flag"]
+        result = _TwoPhaseCLIHand._inject_prompt_argument(cmd, "my prompt")
+        assert result is True
+        assert cmd == ["tool", "-p", "my prompt", "--next-flag"]
+
+    def test_inject_prompt_argument_with_equals(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        cmd = ["tool", "--prompt=old"]
+        result = _TwoPhaseCLIHand._inject_prompt_argument(cmd, "new")
+        assert result is True
+        assert cmd == ["tool", "--prompt=new"]
+
+    def test_inject_prompt_argument_short_equals(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        cmd = ["tool", "-p=old"]
+        result = _TwoPhaseCLIHand._inject_prompt_argument(cmd, "new")
+        assert result is True
+        assert cmd == ["tool", "-p=new"]
+
+    def test_inject_prompt_argument_not_found(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        cmd = ["tool", "--flag", "value"]
+        result = _TwoPhaseCLIHand._inject_prompt_argument(cmd, "prompt")
+        assert result is False
+        assert cmd == ["tool", "--flag", "value"]
+
+    def test_float_env_returns_default_when_unset(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        monkeypatch.delenv("TEST_FLOAT_ENV", raising=False)
+        assert _TwoPhaseCLIHand._float_env("TEST_FLOAT_ENV", default=5.0) == 5.0
+
+    def test_float_env_returns_parsed_value(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        monkeypatch.setenv("TEST_FLOAT_ENV", " 3.5 ")
+        assert _TwoPhaseCLIHand._float_env("TEST_FLOAT_ENV", default=1.0) == 3.5
+
+    def test_float_env_returns_default_on_invalid(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        monkeypatch.setenv("TEST_FLOAT_ENV", "not_a_number")
+        assert _TwoPhaseCLIHand._float_env("TEST_FLOAT_ENV", default=2.0) == 2.0
+
+    def test_float_env_returns_default_on_zero_or_negative(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        monkeypatch.setenv("TEST_FLOAT_ENV", "0")
+        assert _TwoPhaseCLIHand._float_env("TEST_FLOAT_ENV", default=7.0) == 7.0
+        monkeypatch.setenv("TEST_FLOAT_ENV", "-1")
+        assert _TwoPhaseCLIHand._float_env("TEST_FLOAT_ENV", default=7.0) == 7.0
+
+    def test_looks_like_edit_request_true(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        for prompt in ("Add a login page", "Fix the bug", "Refactor utils"):
+            assert _TwoPhaseCLIHand._looks_like_edit_request(prompt) is True
+
+    def test_looks_like_edit_request_false(self) -> None:
+        from helping_hands.lib.hands.v1.hand.cli.base import _TwoPhaseCLIHand
+
+        assert _TwoPhaseCLIHand._looks_like_edit_request("explain the code") is False
+        assert _TwoPhaseCLIHand._looks_like_edit_request("list all files") is False
+
+
+# ---------------------------------------------------------------------------
+# OpenCodeCLIHand
+# ---------------------------------------------------------------------------
+
+
+class TestOpenCodeCLIHand:
+    def test_build_opencode_failure_message_generic(self) -> None:
+        msg = OpenCodeCLIHand._build_opencode_failure_message(
+            return_code=1, output="some error output"
+        )
+        assert "OpenCode CLI failed (exit=1)" in msg
+        assert "some error output" in msg
+
+    def test_build_opencode_failure_message_auth_error(self) -> None:
+        msg = OpenCodeCLIHand._build_opencode_failure_message(
+            return_code=1, output="Error: 401 Unauthorized response from API"
+        )
+        assert "authentication failed" in msg.lower()
+        assert "opencode auth login" in msg.lower()
+
+    def test_build_opencode_failure_message_invalid_api_key(self) -> None:
+        msg = OpenCodeCLIHand._build_opencode_failure_message(
+            return_code=1, output="Error: invalid api key provided"
+        )
+        assert "authentication failed" in msg.lower()
+
+    def test_resolve_cli_model_preserves_provider_slash(
+        self, repo_index: RepoIndex
+    ) -> None:
+        cfg = Config(repo="/tmp/fake", model="anthropic/claude-sonnet-4-6")
+        hand = OpenCodeCLIHand(cfg, repo_index)
+        assert hand._resolve_cli_model() == "anthropic/claude-sonnet-4-6"
+
+    def test_resolve_cli_model_default_returns_empty(
+        self, repo_index: RepoIndex
+    ) -> None:
+        cfg = Config(repo="/tmp/fake", model="default")
+        hand = OpenCodeCLIHand(cfg, repo_index)
+        assert hand._resolve_cli_model() == ""
+
+    def test_resolve_cli_model_empty_returns_empty(
+        self, repo_index: RepoIndex
+    ) -> None:
+        cfg = Config(repo="/tmp/fake", model="")
+        hand = OpenCodeCLIHand(cfg, repo_index)
+        assert hand._resolve_cli_model() == ""
+
+    def test_render_command_defaults_to_opencode_run(
+        self,
+        repo_index: RepoIndex,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.delenv("HELPING_HANDS_OPENCODE_CLI_CMD", raising=False)
+        cfg = Config(repo="/tmp/fake", model="default")
+        hand = OpenCodeCLIHand(cfg, repo_index)
+        cmd = hand._render_command("do stuff")
+        assert cmd[0] == "opencode"
+        assert "run" in cmd
+        assert "do stuff" in cmd
+
+    def test_command_not_found_message(
+        self,
+        config: Config,
+        repo_index: RepoIndex,
+    ) -> None:
+        hand = OpenCodeCLIHand(config, repo_index)
+        msg = hand._command_not_found_message("opencode")
+        assert "HELPING_HANDS_OPENCODE_CLI_CMD" in msg
+        assert "opencode" in msg
 
 
 # ---------------------------------------------------------------------------

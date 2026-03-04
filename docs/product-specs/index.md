@@ -4,7 +4,7 @@ Index of product specification documents.
 
 ## Specs
 
-_No detailed specs yet. Add specs here as features are designed._
+- [New User Onboarding](new-user-onboarding.md) — Quick-start flow, examples directory, `doctor` command
 
 ## Adding a spec
 
