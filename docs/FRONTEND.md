@@ -25,14 +25,53 @@ Stack:
 - ESLint for linting
 - Vitest for testing
 
-Commands:
+### Component structure
+
+The React frontend is organized as a single-page application:
+
+```
+frontend/src/
+├── main.tsx          # Entry point, renders <App />
+├── App.tsx           # Main component (form, task list, monitors)
+├── App.utils.test.ts # Unit tests for utility functions
+├── styles.css        # Global styles
+├── vite-env.d.ts     # Vite type declarations
+└── test/
+    └── setup.ts      # Vitest setup (jsdom environment)
+```
+
+### State management
+
+State is managed via React's built-in `useState` hooks within `App.tsx`:
+
+- **FormState** — All form fields (repo path, prompt, backend, model, toggles)
+- **TaskHistoryItem[]** — Local task history with status polling
+- **WorkerCapacityResponse** — Celery worker availability
+- **CurrentTasksResponse** — Active/queued tasks from server
+
+No external state library (Redux, Zustand, etc.) is used. State flows
+top-down within `App.tsx` via props to inline sub-components.
+
+### Key TypeScript types
+
+| Type | Purpose |
+|---|---|
+| `Backend` | Union of all supported backend identifiers |
+| `FormState` | Shape of the task submission form |
+| `BuildResponse` | POST `/build` response |
+| `TaskStatus` | GET `/tasks/{id}` response |
+| `CurrentTask` | Individual task in the active queue |
+| `TaskHistoryItem` | Client-side task tracking entry |
+
+### Commands
+
 ```bash
 npm --prefix frontend install
-npm --prefix frontend run dev
-npm --prefix frontend run build
-npm --prefix frontend run lint
-npm --prefix frontend run typecheck
-npm --prefix frontend run test
+npm --prefix frontend run dev         # dev server
+npm --prefix frontend run build       # production build
+npm --prefix frontend run lint        # ESLint
+npm --prefix frontend run typecheck   # tsc --noEmit
+npm --prefix frontend run test        # Vitest
 ```
 
 ## Sync requirements
@@ -44,6 +83,39 @@ When modifying UI features, both surfaces must be updated:
 
 This is documented in `AGENT.md` under Recurring decisions.
 
+### Validating sync
+
+To verify both surfaces offer the same features:
+
+1. Check that any new form fields in `FormState` (React) also appear in
+   the inline HTML form within `_UI_HTML`
+2. Verify that new API endpoints consumed by React are also wired in the
+   inline JS polling/fetch logic
+3. Run both surfaces side by side:
+   - Inline: `docker compose up --build` then visit `http://localhost:8000`
+   - React: `npm --prefix frontend run dev` then visit `http://localhost:5173`
+
+## Testing strategy
+
+### Unit tests (Vitest)
+
+- Tests live in `frontend/src/` alongside source (e.g., `App.utils.test.ts`)
+- Run with `npm --prefix frontend run test`
+- CI enforces: Vitest with coverage via `@vitest/coverage-v8`
+
+### Lint and type safety
+
+- ESLint catches code quality issues: `npm --prefix frontend run lint`
+- TypeScript strict mode via `tsc --noEmit`: `npm --prefix frontend run typecheck`
+- Both are enforced in CI
+
+### What to test
+
+- Utility/helper functions extracted from components (pure logic)
+- API response parsing and error handling
+- Form validation logic
+- Task status transition handling
+
 ## API endpoints used by both UIs
 
 | Endpoint | Method | Purpose |
@@ -52,3 +124,4 @@ This is documented in `AGENT.md` under Recurring decisions.
 | `/tasks/{task_id}` | GET | Get task status/result |
 | `/tasks/current` | GET | List active/queued tasks |
 | `/monitor/{task_id}` | GET | HTML auto-refresh monitor |
+| `/workers/capacity` | GET | Celery worker pool info |

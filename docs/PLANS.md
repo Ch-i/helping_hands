@@ -4,11 +4,14 @@ Index of execution plans for helping_hands development.
 
 ## Active plans
 
-- [Docs and Testing v2](exec-plans/active/docs-and-testing-v2.md) —
-  Fill documentation gaps and add targeted tests for untested modules (started 2026-03-04)
+_No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v3](exec-plans/completed/docs-and-testing-v3.md) —
+  Iterative hand tests, ARCHITECTURE.md data flows, FRONTEND.md expansion (completed 2026-03-04)
+- [Docs and Testing v2](exec-plans/completed/docs-and-testing-v2.md) —
+  Fill documentation gaps and add targeted tests for untested modules (completed 2026-03-04)
 - [Improve Docs and Testing](exec-plans/completed/improve-docs-and-testing.md) —
   Established docs structure, filled initial testing gaps (completed 2026-03-04)
 

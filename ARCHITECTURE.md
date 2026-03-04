@@ -94,6 +94,114 @@ All hands share a finalization flow (in `base.py`):
 
 Disable with `--no-pr`.
 
+## Data flows
+
+### CLI task execution
+
+```
+User runs CLI command
+        │
+        ▼
+  cli/main.py parses args
+        │
+        ▼
+  Config.from_env() merges .env + env vars + CLI overrides
+        │
+        ▼
+  RepoIndex.from_path(target) builds file map
+        │
+        ▼
+  Hand subclass instantiated (based on --backend)
+        │
+        ▼
+  hand.stream(prompt) called
+        │
+        ├── Iteration 1: bootstrap context (README, AGENT.md, tree)
+        │       │
+        │       ▼
+        │   AI provider generates response
+        │       │
+        │       ▼
+        │   Parse @@FILE / @@READ / @@TOOL blocks
+        │       │
+        │       ▼
+        │   Apply file edits, resolve reads, run tools
+        │       │
+        │       ▼
+        │   Check SATISFIED: yes/no
+        │
+        ├── Iteration 2..N: prior summary as context (no bootstrap)
+        │       │
+        │       ▼
+        │   (same parse → apply → check loop)
+        │
+        └── Exit: satisfied | max_iterations | interrupted
+                │
+                ▼
+          Finalization: branch → commit → push → PR
+```
+
+### Server task execution
+
+```
+Client POST /build with {repo_path, prompt, backend, ...}
+        │
+        ▼
+  FastAPI validates request, generates task_id
+        │
+        ▼
+  Celery task queued → worker picks up
+        │
+        ▼
+  Worker: Config + RepoIndex + Hand (same as CLI path)
+        │
+        ▼
+  hand.run(prompt) called (non-streaming)
+        │
+        ▼
+  TaskResult stored (Redis/in-memory)
+        │
+        ▼
+  Client polls GET /tasks/{task_id} until status=complete
+```
+
+### MCP server flow
+
+```
+IDE sends MCP tool call (e.g., "build_repo")
+        │
+        ▼
+  mcp_server.py routes to handler
+        │
+        ▼
+  Handler creates Config + RepoIndex + Hand
+        │
+        ▼
+  hand.run(prompt) → result returned as MCP response
+```
+
+## External integrations
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   GitHub     │     │  AI Provider │     │    Redis     │
+│   API        │     │  APIs        │     │              │
+│              │     │              │     │              │
+│ - Clone repo │     │ - OpenAI     │     │ - Task state │
+│ - Push branch│     │ - Anthropic  │     │ - Celery     │
+│ - Create PR  │     │ - Google     │     │   broker     │
+│ - PR comments│     │ - LiteLLM    │     │ - RedBeat    │
+│              │     │ - Ollama     │     │   schedules  │
+└──────┬───────┘     └──────┬───────┘     └──────┬───────┘
+       │                    │                    │
+       └────────────────────┼────────────────────┘
+                            │
+                     ┌──────▼──────┐
+                     │    lib/     │
+                     │  (core)     │
+                     └─────────────┘
+```
+
 ## Design principles
 
 - **Plain data between layers** — Dicts/dataclasses, not tight coupling
@@ -107,9 +215,12 @@ Disable with `--no-pr`.
 | Purpose | Path |
 |---|---|
 | Hand base class | `src/helping_hands/lib/hands/v1/hand/base.py` |
+| Iterative hands | `src/helping_hands/lib/hands/v1/hand/iterative.py` |
+| CLI hand base | `src/helping_hands/lib/hands/v1/hand/cli/base.py` |
 | Config | `src/helping_hands/lib/config.py` |
 | GitHub integration | `src/helping_hands/lib/github.py` |
 | Filesystem tools | `src/helping_hands/lib/meta/tools/filesystem.py` |
+| Tool registry | `src/helping_hands/lib/meta/tools/registry.py` |
 | CLI entry | `src/helping_hands/cli/main.py` |
 | Server entry | `src/helping_hands/server/app.py` |
 | MCP server | `src/helping_hands/server/mcp_server.py` |
