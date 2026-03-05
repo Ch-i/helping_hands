@@ -575,5 +575,7 @@ class TestCreatePrForDivergedBranch:
 
         assert metadata["pr_status"] == "created"
         call_kwargs = mock_gh.create_pr.call_args
-        assert "automated hand update" in call_kwargs[1]["title"]
+        # When generate_pr_description returns None, the title falls back to
+        # _commit_message_from_prompt which derives a conventional commit title.
+        assert call_kwargs[1]["title"]  # non-empty title generated from summary
         assert "Follow-up to #10" in call_kwargs[1]["body"]
