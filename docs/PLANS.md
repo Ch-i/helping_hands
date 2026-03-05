@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v14](exec-plans/completed/docs-and-testing-v14.md) —
+  CLI main.py static helper tests (_github_clone_url, _git_noninteractive_env, _redact_sensitive, _repo_tmp_dir); additional backend path tests (opencodecli, model_not_found, invalid tools); ARCHITECTURE.md key file paths refresh; QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v13](exec-plans/completed/docs-and-testing-v13.md) —
   App.py pure helper tests (_parse_backend, _task_state_priority, _normalize_task_status, _extract_task_id/name/kwargs, _coerce_optional_str, _parse_task_kwargs_str, _is_helping_hands_task, _upsert_current_task, _flower_timeout_seconds, _flower_api_base_url); CLI base.py CI/PR helper tests (_build_ci_fix_prompt, _format_ci_fix_message, _format_pr_status_message, _looks_like_edit_request); QUALITY_SCORE.md updates (completed 2026-03-05)
 

@@ -217,14 +217,24 @@ IDE sends MCP tool call (e.g., "build_repo")
 | Hand base class | `src/helping_hands/lib/hands/v1/hand/base.py` |
 | Iterative hands | `src/helping_hands/lib/hands/v1/hand/iterative.py` |
 | CLI hand base | `src/helping_hands/lib/hands/v1/hand/cli/base.py` |
+| Model resolution | `src/helping_hands/lib/hands/v1/hand/model_provider.py` |
+| PR description gen | `src/helping_hands/lib/hands/v1/hand/pr_description.py` |
+| CLI shim (legacy) | `src/helping_hands/lib/hands/v1/hand/placeholders.py` |
 | Config | `src/helping_hands/lib/config.py` |
+| Default prompts | `src/helping_hands/lib/default_prompts.py` |
 | GitHub integration | `src/helping_hands/lib/github.py` |
 | Filesystem tools | `src/helping_hands/lib/meta/tools/filesystem.py` |
+| Command tools | `src/helping_hands/lib/meta/tools/command.py` |
+| Web tools | `src/helping_hands/lib/meta/tools/web.py` |
 | Tool registry | `src/helping_hands/lib/meta/tools/registry.py` |
+| Skill catalog | `src/helping_hands/lib/meta/skills/__init__.py` |
 | CLI entry | `src/helping_hands/cli/main.py` |
 | Server entry | `src/helping_hands/server/app.py` |
+| Celery workers | `src/helping_hands/server/celery_app.py` |
 | MCP server | `src/helping_hands/server/mcp_server.py` |
+| Schedules | `src/helping_hands/server/schedules.py` |
+| Task result helper | `src/helping_hands/server/task_result.py` |
 
 ---
 
-*Last updated: 2026-03-04*
+*Last updated: 2026-03-05*
