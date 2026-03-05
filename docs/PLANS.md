@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v24](exec-plans/completed/docs-and-testing-v24.md) —
+  CLI base.py CI fix loop tests (`_ci_fix_loop` all early-return paths, success/no_checks/pending/failure conclusions, fix-with-changes, exhausted retries, interrupt, exception error status; `_poll_ci_checks` immediate/deadline paths; `run()` collect+finalize with/without CI fix; `stream()` chunk yielding and PR status); web.py helper edge case tests (`_extract_related_topics` recursive/skip paths, `_require_http_url` extra validation, `_strip_html` noscript/blank-lines, `search_web` dedup/validation/format, `browse_url` non-HTML/validation); QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v23](exec-plans/completed/docs-and-testing-v23.md) —
   Fix schedule test collection errors (importorskip guards); AtomicHand unit tests (_build_agent, run(), stream() with 5 async paths); LangGraphHand unit tests (_build_agent, run(), stream() with event filtering); GooseCLIHand helper tests (_describe_auth, _normalize_base_command, _pr_description_cmd, _has_goose_builtin_flag, _apply_backend_defaults, _resolve_ollama_host); QUALITY_SCORE.md updates (completed 2026-03-05)
 

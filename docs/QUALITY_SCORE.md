@@ -87,12 +87,14 @@ Target Python: 3.12+
 | `lib/hands/v1/hand/atomic.py` | Good (78% -> 93%+) | 90%+ | `_build_agent` (mocked atomic_agents imports), `run()` (HandResponse structure, PR metadata), `stream()` (AssertionError sync fallback, async iterator path, awaitable path, awaitable AssertionError fallback, PR URL yield), `_make_input` added in v23 |
 | `lib/hands/v1/hand/langgraph.py` | Good (83% -> 95%+) | 90%+ | `_build_agent` (mocked create_react_agent), `run()` (HandResponse, str fallback, PR metadata), `stream()` (chunk extraction, non-chat event filtering, empty content skip, PR URL yield) added in v23 |
 | `lib/hands/v1/hand/cli/goose.py` | Good (91% -> 95%+) | 90%+ | `_describe_auth` (all providers, key set/not set), `_normalize_base_command` (bare goose/goose run/goose run --instructions/passthrough), `_pr_description_cmd` (anthropic with/without claude, non-anthropic), `_has_goose_builtin_flag`, `_apply_backend_defaults`, `_resolve_ollama_host` added in v23 |
+| `lib/hands/v1/hand/cli/base.py` (CI fix loop) | Good (78% -> 80%+) | 80%+ | `_ci_fix_loop` (all early-return paths, success/no_checks/pending/failure conclusions, fix-with-changes-then-success, no-changes-exhausted, interrupt before/after poll, exception error status), `_poll_ci_checks` (immediate return, poll-until-deadline), `run()` (collect+finalize, CI fix triggered, CI fix skipped when no PR), `stream()` (chunk yielding, PR status message, CI fix integration) added in v24 |
+| `lib/meta/tools/web.py` | Excellent (85% -> 98%+) | Maintained | `_extract_related_topics` (text+url extraction, recursive Topics, non-dict/missing/empty skips), `_require_http_url` (whitespace-only, no-scheme), `_strip_html` (noscript, blank line collapsing), `search_web` (invalid params, unexpected format, dedup, empty URLs, max_results cap), `browse_url` (invalid params, non-HTML content, HTML-by-body-detection) added in v24 |
 
 ## Areas for improvement
 
 - [ ] Add type checking to CI (ty, when stable for CI runners)
 - [ ] Add mutation testing for critical path safety (filesystem tools)
-- [ ] Increase coverage for CLI hand subprocess wrappers
 - [ ] Add load testing for app mode concurrent task handling
 - [x] Add tests for `_build_tree_snapshot` / `_build_bootstrap_context` (iterative.py) — added in v9
 - [x] Add tests for `_read_bootstrap_doc` / `_apply_inline_edits` (iterative.py, needs tmp_path) — added in v9
+- [x] Increase coverage for CLI hand CI fix loop and run/stream wrappers — added in v24
