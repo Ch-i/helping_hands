@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v16](exec-plans/completed/docs-and-testing-v16.md) —
+  OpenAI provider `_build_inner()`/`_complete_impl()` tests; Google provider `_complete_impl()` tests; ClaudeCodeHand additional helper tests (`_command_not_found_message`, `_native_cli_auth_env_names`, `_pr_description_cmd`); QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v15](exec-plans/completed/docs-and-testing-v15.md) —
   `build_langchain_chat_model()` tests (all 5 providers, ImportError paths, Ollama env vars); `build_atomic_client()` tests (OpenAI, LiteLLM, missing attr, unsupported); provider abstraction design doc; QUALITY_SCORE.md updates (completed 2026-03-05)
 

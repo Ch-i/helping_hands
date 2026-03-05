@@ -487,3 +487,49 @@ class TestStreamJsonEmitterProcessing:
         result_emissions = [e for e in emitted if "->" in e]
         assert result_emissions
         assert "..." in result_emissions[0]
+
+
+# ---------------------------------------------------------------------------
+# _command_not_found_message
+# ---------------------------------------------------------------------------
+
+
+class TestCommandNotFoundMessage:
+    def test_includes_command_name(self, claude_hand) -> None:
+        msg = claude_hand._command_not_found_message("claude")
+        assert "claude" in msg
+        assert "HELPING_HANDS_CLAUDE_CLI_CMD" in msg
+
+    def test_includes_repr_of_custom_command(self, claude_hand) -> None:
+        msg = claude_hand._command_not_found_message("/usr/bin/claude-custom")
+        assert "/usr/bin/claude-custom" in msg
+
+
+# ---------------------------------------------------------------------------
+# _native_cli_auth_env_names
+# ---------------------------------------------------------------------------
+
+
+class TestNativeCliAuthEnvNames:
+    def test_returns_anthropic_api_key(self, claude_hand) -> None:
+        result = claude_hand._native_cli_auth_env_names()
+        assert result == ("ANTHROPIC_API_KEY",)
+
+
+# ---------------------------------------------------------------------------
+# _pr_description_cmd
+# ---------------------------------------------------------------------------
+
+
+class TestPrDescriptionCmd:
+    def test_returns_cmd_when_claude_available(self, claude_hand, monkeypatch) -> None:
+        monkeypatch.setattr(
+            "shutil.which", lambda name: "/usr/bin/claude" if name == "claude" else None
+        )
+        result = claude_hand._pr_description_cmd()
+        assert result == ["claude", "-p", "--output-format", "text"]
+
+    def test_returns_none_when_claude_not_found(self, claude_hand, monkeypatch) -> None:
+        monkeypatch.setattr("shutil.which", lambda name: None)
+        result = claude_hand._pr_description_cmd()
+        assert result is None

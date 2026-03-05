@@ -71,6 +71,9 @@ Target Python: 3.12+
 | `lib/hands/v1/hand/cli/base.py` (CI/PR) | Good (6 test classes) | 80%+ | `_build_ci_fix_prompt`, `_format_ci_fix_message`, `_format_pr_status_message`, `_looks_like_edit_request` added in v13 |
 | `cli/main.py` (helpers) | Good (6 test classes) | 93%+ | `_github_clone_url`, `_git_noninteractive_env`, `_redact_sensitive`, `_repo_tmp_dir`, `opencodecli` backend, `model_not_found` error, invalid `--tools` added in v14 |
 | `lib/hands/v1/hand/model_provider.py` (builders) | Excellent (99% coverage) | Maintained | `build_langchain_chat_model` (all 5 providers + ImportError paths + env vars), `build_atomic_client` (OpenAI, LiteLLM + missing attr, unsupported) added in v15 |
+| `lib/ai_providers/openai.py` | Good (dedicated tests) | 85%+ | `_build_inner` (ImportError, with/without API key), `_complete_impl` (delegation, kwargs) added in v16 |
+| `lib/ai_providers/google.py` | Good (build_inner + complete_impl) | 85%+ | `_complete_impl` (delegation, empty content filtering, kwargs) added in v16; `_build_inner` covered in v11 |
+| `lib/hands/v1/hand/cli/claude.py` | Excellent (92% coverage) | Maintained | `_command_not_found_message`, `_native_cli_auth_env_names`, `_pr_description_cmd` added in v16 |
 
 ## Areas for improvement
 
