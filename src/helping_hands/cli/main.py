@@ -22,6 +22,7 @@ from helping_hands.lib.hands.v1.hand import (
     BasicLangGraphHand,
     ClaudeCodeHand,
     CodexCLIHand,
+    DockerSandboxClaudeCodeHand,
     E2EHand,
     GeminiCLIHand,
     GooseCLIHand,
@@ -70,6 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
             "basic-agent",
             "codexcli",
             "claudecodecli",
+            "docker-sandbox-claude",
             "goose",
             "geminicli",
             "opencodecli",
@@ -215,6 +217,8 @@ def main(argv: list[str] | None = None) -> None:
                 hand = CodexCLIHand(config, repo_index)
             elif args.backend == "claudecodecli":
                 hand = ClaudeCodeHand(config, repo_index)
+            elif args.backend == "docker-sandbox-claude":
+                hand = DockerSandboxClaudeCodeHand(config, repo_index)
             elif args.backend == "goose":
                 hand = GooseCLIHand(config, repo_index)
             elif args.backend == "geminicli":
@@ -271,7 +275,13 @@ def main(argv: list[str] | None = None) -> None:
                     file=sys.stderr,
                 )
                 sys.exit(1)
-            if args.backend in {"codexcli", "claudecodecli", "goose", "geminicli"}:
+            if args.backend in {
+                "codexcli",
+                "claudecodecli",
+                "docker-sandbox-claude",
+                "goose",
+                "geminicli",
+            }:
                 print(f"Error: {msg}", file=sys.stderr)
                 sys.exit(1)
             raise

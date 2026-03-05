@@ -20,7 +20,7 @@
 
 - **CLI mode** (default) — Run `helping-hands <repo>` (local path) or `helping-hands <owner/repo>` (auto-clones to a temp workspace, cleaned up on exit). You can index only, or run iterative backends plus external-CLI backends with streamed output:
   - iterative: `basic-langgraph` (requires `--extra langchain`), `basic-atomic` / `basic-agent` (require `--extra atomic`)
-  - external CLI: `codexcli`, `claudecodecli`, `goose`, `geminicli`, `opencodecli`
+  - external CLI: `codexcli`, `claudecodecli`, `docker-sandbox-claude`, `goose`, `geminicli`, `opencodecli`
 - **App mode** — Runs a FastAPI server plus a worker stack (Celery, Redis, Postgres) so jobs run asynchronously and on a schedule (cron). Includes Flower for queue monitoring. Use when you want a persistent service, queued or scheduled repo-building tasks, or a UI.
 
 ### Execution flow
@@ -213,7 +213,7 @@ Notes:
 - To keep docker hostnames unchanged, set `HH_LOCAL_STACK_KEEP_DOCKER_HOSTS=1`.
 
 The built-in UI at `http://localhost:8000/` supports:
-- backend selection (`e2e`, `basic-langgraph`, `basic-atomic`, `basic-agent`, `codexcli`, `claudecodecli`, `goose`, `geminicli`, `opencodecli`)
+- backend selection (`e2e`, `basic-langgraph`, `basic-atomic`, `basic-agent`, `codexcli`, `claudecodecli`, `docker-sandbox-claude`, `goose`, `geminicli`, `opencodecli`)
 - model override
 - max iterations
 - optional PR number
@@ -414,6 +414,7 @@ Key CLI flags:
 - `--backend {basic-langgraph,basic-atomic,basic-agent}` — run iterative basic hands
 - `--backend codexcli` — run Codex CLI backend (initialize/learn repo, then execute task)
 - `--backend claudecodecli` — run Claude Code CLI backend (initialize/learn repo, then execute task)
+- `--backend docker-sandbox-claude` — run Claude Code inside a Docker Desktop microVM sandbox (requires Docker Desktop 4.49+, `ANTHROPIC_API_KEY`)
 - `--backend goose` — run Goose CLI backend (initialize/learn repo, then execute task)
 - `--backend geminicli` — run Gemini CLI backend (initialize/learn repo, then execute task)
 - `--backend opencodecli` — run OpenCode CLI backend (initialize/learn repo, then execute task)
@@ -435,6 +436,7 @@ calls an external CLI subprocess or uses a Python AI provider SDK directly.
 | `basic-agent` | **API key** (Python SDK) | Provider-dependent (see below) | Same deps as `basic-atomic` |
 | `codexcli` | **Native CLI** (`codex exec`) | `OPENAI_API_KEY` | Runs `codex` as subprocess; **native CLI auth** supported via `--use-native-cli-auth` (strips `OPENAI_API_KEY` from subprocess env, uses `codex login` session instead) |
 | `claudecodecli` | **Native CLI** (`claude -p`) | `ANTHROPIC_API_KEY` | Runs `claude` as subprocess; **native CLI auth** supported via `--use-native-cli-auth` (strips `ANTHROPIC_API_KEY` from subprocess env, uses `claude auth` session instead) |
+| `docker-sandbox-claude` | **Docker Sandbox** (`docker sandbox exec`) | `ANTHROPIC_API_KEY` | Runs `claude` inside a Docker Desktop microVM sandbox; requires Docker Desktop 4.49+. OAuth/Keychain auth is **not** available inside the sandbox — `ANTHROPIC_API_KEY` is required. |
 | `goose` | **Native CLI** (`goose run`) | Depends on `GOOSE_PROVIDER`: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, or Ollama vars | Runs `goose` as subprocess; provider/model injected via `GOOSE_PROVIDER`/`GOOSE_MODEL` env vars. Also requires `GH_TOKEN` or `GITHUB_TOKEN` |
 | `geminicli` | **Native CLI** (`gemini -p`) | `GEMINI_API_KEY` | Runs `gemini` as subprocess; API key is **always required** (no native-CLI-auth toggle) |
 | `opencodecli` | **Native CLI** (`opencode run`) | Provider-dependent (via `opencode.json`) | Runs `opencode` as subprocess; model passed as `provider/model` (e.g. `litellm/claude-sonnet-4-6`). Configure providers in `~/.config/opencode/opencode.json`. |
@@ -488,7 +490,7 @@ Codex backend requirements:
 - By default, codex commands run with host/container-aware sandbox mode (`workspace-write` on host, `danger-full-access` in containers).
 - By default, codex automation uses `--skip-git-repo-check` for non-interactive worker/CLI runs.
 - If you enable container mode, Docker must be installed and the image must include the `codex` executable.
-- App mode supports `codexcli`, `claudecodecli`, `goose`, `geminicli`, and `opencodecli`; ensure the worker runtime has each CLI installed/authenticated as needed.
+- App mode supports `codexcli`, `claudecodecli`, `docker-sandbox-claude`, `goose`, `geminicli`, and `opencodecli`; ensure the worker runtime has each CLI installed/authenticated as needed.
 - The included Dockerfile installs `@openai/codex` and Goose CLI in app/worker images.
 - The included Dockerfile does **not** install Claude Code CLI by default.
 - No extra Python optional dependency is required for `codexcli` itself (unlike `--extra langchain` and `--extra atomic` used by other iterative backends).
@@ -545,6 +547,31 @@ Claude Code backend requirements:
   Claude permission mode can be used by default.
 - If an edit-intent prompt returns only prose with no git changes, the backend
   automatically runs one extra enforcement pass to apply edits directly.
+
+Docker Sandbox Claude backend notes:
+
+- Runs Claude Code inside a [Docker Desktop sandbox](https://docs.docker.com/ai/sandboxes/) (microVM isolation)
+- **Env vars:** `ANTHROPIC_API_KEY` (**required** — host macOS Keychain/OAuth tokens cannot be forwarded into the sandbox)
+- Lifecycle: creates a sandbox with `docker sandbox create`, executes Claude via `docker sandbox exec`, cleans up with `docker sandbox rm`
+- The workspace directory is automatically synced between host and sandbox at the same absolute path
+- The sandbox persists across the init and task phases, so packages installed during init are available during task execution
+- All `claudecodecli` features are inherited: `--output-format stream-json` parsing, `--dangerously-skip-permissions`, retry-on-no-changes
+- `HELPING_HANDS_DOCKER_SANDBOX_CLEANUP` (default: `1`) — set to `0` to keep the sandbox after the run completes (useful for debugging)
+- `HELPING_HANDS_DOCKER_SANDBOX_NAME` — override the auto-generated sandbox name
+- `HELPING_HANDS_DOCKER_SANDBOX_TEMPLATE` — custom base image (passed to `docker sandbox create --template`)
+
+Docker Sandbox Claude backend requirements:
+
+- **Docker Desktop 4.49+** with the `docker sandbox` CLI plugin (bundled with Docker Desktop)
+- macOS or Windows (experimental); Linux requires Docker Desktop 4.57+ for legacy container-based sandboxes
+- `ANTHROPIC_API_KEY` must be set (OAuth login uses macOS Keychain which is inaccessible from the sandbox)
+- To create/push PRs at the end of a run, set `GITHUB_TOKEN` or `GH_TOKEN`
+
+Docker Sandbox Claude backend smoke test:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... uv run helping-hands owner/repo --backend docker-sandbox-claude --prompt "Implement one small safe improvement"
+```
 
 Goose backend notes:
 
@@ -605,6 +632,9 @@ uv run helping-hands "suryarastogi/helping_hands" --backend codexcli --model gpt
 
 # claudecodecli
 uv run helping-hands "suryarastogi/helping_hands" --backend claudecodecli --model anthropic/claude-sonnet-4-5 --prompt "Implement one small safe improvement"
+
+# docker-sandbox-claude (requires Docker Desktop 4.49+ and ANTHROPIC_API_KEY)
+ANTHROPIC_API_KEY=sk-ant-... uv run helping-hands "suryarastogi/helping_hands" --backend docker-sandbox-claude --prompt "Implement one small safe improvement"
 
 # goose
 uv run helping-hands "suryarastogi/helping_hands" --backend goose --prompt "Implement one small safe improvement"
