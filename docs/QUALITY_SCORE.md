@@ -92,6 +92,7 @@ Target Python: 3.12+
 | `lib/hands/v1/hand/cli/gemini.py` | Excellent (98%) | Maintained | `_describe_auth` (key set/not set/empty), `_pr_description_cmd` (gemini found/not found), `_command_not_found_message` added in v25 |
 | `lib/hands/v1/hand/cli/codex.py` | Excellent (92% -> 95%+) | Maintained | `_command_not_found_message`, `_native_cli_auth_env_names`, `_apply_codex_exec_sandbox_defaults` (empty/whitespace env override fallback) added in v25 |
 | `lib/hands/v1/hand/cli/opencode.py` | Excellent (91% -> 94%) | Maintained | `_build_failure_message` delegation, `_build_opencode_failure_message` additional auth token variations (case-insensitive, non-auth distinction, exit code) added in v26 |
+| `lib/hands/v1/hand/cli/docker_sandbox_claude.py` | Good (19% -> 91%) | 85%+ | Class attrs, `_resolve_sandbox_name` (env override/auto-gen/cache/sanitize), `_should_cleanup` (truthy/falsy), `_wrap_sandbox_exec` (wrapping/env forwarding), `_execution_mode`, `_build_failure_message` (auth/generic/sandbox note), `_command_not_found_message`, `_fallback_command_when_not_found`, `_docker_sandbox_available` (success/fail/FileNotFoundError), `_ensure_sandbox` (skip/docker-not-found/plugin-unavailable/success/failure/template), `_remove_sandbox` (skip/stop+rm) added in v27 |
 
 ## Areas for improvement
 
