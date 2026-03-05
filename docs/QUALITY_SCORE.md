@@ -65,7 +65,8 @@ Target Python: 3.12+
 | `lib/hands/v1/hand/e2e.py` | Good (static methods fully tested) | 80%+ | `_safe_repo_dir`, `_work_base`, `_configured_base_branch`, `_build_e2e_pr_comment`, `_build_e2e_pr_body` added in v10 |
 | `server/celery_app.py` | Good (URL helpers, redaction, updates) | 70%+ | `_github_clone_url`, `_redact_sensitive`, `_repo_tmp_dir`, `_trim_updates`, `_append_update`, `_UpdateCollector` added in v10 |
 | `server/schedules.py` | Good (ScheduledTask, cron validation, ScheduleManager CRUD) | 80%+ | `_check_redbeat`, `_check_croniter`, ScheduleManager with mocked Redis added in v11 |
-| `server/mcp_server.py` | Good (10 test classes) | 85%+ | Tool error paths next |
+| `lib/meta/tools/registry.py` (runners) | Good (runner payload validation + mocked dispatch) | 85%+ | `_run_python_code`, `_run_python_script`, `_run_bash_script`, `_run_web_search`, `_run_web_browse` added in v12 |
+| `server/mcp_server.py` | Good (12 test classes) | 85%+ | `_repo_root`, `_command_result_to_dict`, error paths (IsADirectory, Unicode, path traversal) added in v12; fixed UnicodeError handler ordering |
 
 ## Areas for improvement
 

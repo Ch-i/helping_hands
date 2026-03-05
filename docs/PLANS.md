@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v12](exec-plans/completed/docs-and-testing-v12.md) —
+  Registry runner wrapper tests (payload validation + mocked dispatch for all 5 runners), MCP server error path tests (_repo_root, _command_result_to_dict, read_file IsADirectory/Unicode/path-traversal, write_file path-traversal); fixed UnicodeError handler ordering bug in mcp_server.py; QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v11](exec-plans/completed/docs-and-testing-v11.md) —
   Provider `_build_inner()` tests (LiteLLM, Google, Anthropic — ImportError + env var paths), `_check_redbeat`/`_check_croniter` tests, ScheduleManager unit tests with mocked Redis (CRUD, enable/disable, record_run); QUALITY_SCORE.md updates (completed 2026-03-05)
 
