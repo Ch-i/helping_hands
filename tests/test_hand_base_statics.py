@@ -409,3 +409,171 @@ class TestFinalizeRepoErrorPaths:
             )
 
         assert result["pr_status"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# _update_pr_description
+# ---------------------------------------------------------------------------
+
+
+class TestUpdatePrDescription:
+    def test_rich_description_used(self, repo_index: RepoIndex) -> None:
+        config = Config(repo=str(repo_index.root), model="test-model")
+        hand = _StubHand(config, repo_index)
+        hand.pr_number = 42
+
+        mock_gh = MagicMock()
+        rich = MagicMock()
+        rich.body = "Rich PR body"
+
+        with patch(
+            "helping_hands.lib.hands.v1.hand.pr_description.generate_pr_description",
+            return_value=rich,
+        ):
+            hand._update_pr_description(
+                gh=mock_gh,
+                repo="owner/repo",
+                repo_dir=repo_index.root,
+                backend="test",
+                prompt="task",
+                summary="done",
+                base_branch="main",
+                commit_sha="abc123",
+            )
+
+        mock_gh.update_pr_body.assert_called_once()
+        call_args = mock_gh.update_pr_body.call_args
+        assert call_args[1]["body"] == "Rich PR body"
+
+    def test_fallback_to_generic_body(self, repo_index: RepoIndex) -> None:
+        config = Config(repo=str(repo_index.root), model="test-model")
+        hand = _StubHand(config, repo_index)
+        hand.pr_number = 42
+
+        mock_gh = MagicMock()
+
+        with patch(
+            "helping_hands.lib.hands.v1.hand.pr_description.generate_pr_description",
+            return_value=None,
+        ):
+            hand._update_pr_description(
+                gh=mock_gh,
+                repo="owner/repo",
+                repo_dir=repo_index.root,
+                backend="test",
+                prompt="task",
+                summary="done",
+                base_branch="main",
+                commit_sha="abc123",
+            )
+
+        mock_gh.update_pr_body.assert_called_once()
+        body = mock_gh.update_pr_body.call_args[1]["body"]
+        assert "test" in body  # backend name in generic body
+
+    def test_update_pr_body_exception_suppressed(self, repo_index: RepoIndex) -> None:
+        config = Config(repo=str(repo_index.root), model="test-model")
+        hand = _StubHand(config, repo_index)
+        hand.pr_number = 42
+
+        mock_gh = MagicMock()
+        mock_gh.update_pr_body.side_effect = RuntimeError("API error")
+
+        with patch(
+            "helping_hands.lib.hands.v1.hand.pr_description.generate_pr_description",
+            return_value=None,
+        ):
+            # Should not raise
+            hand._update_pr_description(
+                gh=mock_gh,
+                repo="owner/repo",
+                repo_dir=repo_index.root,
+                backend="test",
+                prompt="task",
+                summary="done",
+                base_branch="main",
+                commit_sha="abc123",
+            )
+
+
+# ---------------------------------------------------------------------------
+# _create_pr_for_diverged_branch
+# ---------------------------------------------------------------------------
+
+
+class TestCreatePrForDivergedBranch:
+    def test_rich_description_path(self, repo_index: RepoIndex) -> None:
+        config = Config(repo=str(repo_index.root), model="test-model")
+        hand = _StubHand(config, repo_index)
+        hand.pr_number = 10
+
+        mock_gh = MagicMock()
+        mock_pr = MagicMock()
+        mock_pr.url = "https://github.com/o/r/pull/11"
+        mock_pr.number = 11
+        mock_gh.create_pr.return_value = mock_pr
+
+        rich = MagicMock()
+        rich.title = "feat: rich title"
+        rich.body = "Rich body"
+
+        with (
+            patch(
+                "helping_hands.lib.hands.v1.hand.pr_description.generate_pr_description",
+                return_value=rich,
+            ),
+            patch.object(hand, "_push_noninteractive"),
+        ):
+            metadata = hand._create_pr_for_diverged_branch(
+                gh=mock_gh,
+                repo="owner/repo",
+                repo_dir=repo_index.root,
+                backend="test",
+                prompt="task",
+                summary="done",
+                metadata={},
+                pr_branch="original-branch",
+                commit_sha="abc123",
+            )
+
+        assert metadata["pr_status"] == "created"
+        assert metadata["pr_url"] == "https://github.com/o/r/pull/11"
+        mock_gh.create_pr.assert_called_once()
+        call_kwargs = mock_gh.create_pr.call_args
+        assert call_kwargs[1]["title"] == "feat: rich title"
+        assert "Follow-up to #10" in call_kwargs[1]["body"]
+
+    def test_fallback_to_generic_body(self, repo_index: RepoIndex) -> None:
+        config = Config(repo=str(repo_index.root), model="test-model")
+        hand = _StubHand(config, repo_index)
+        hand.pr_number = 10
+
+        mock_gh = MagicMock()
+        mock_pr = MagicMock()
+        mock_pr.url = "https://github.com/o/r/pull/12"
+        mock_pr.number = 12
+        mock_gh.create_pr.return_value = mock_pr
+
+        with (
+            patch(
+                "helping_hands.lib.hands.v1.hand.pr_description.generate_pr_description",
+                return_value=None,
+            ),
+            patch.object(hand, "_push_noninteractive"),
+        ):
+            metadata = hand._create_pr_for_diverged_branch(
+                gh=mock_gh,
+                repo="owner/repo",
+                repo_dir=repo_index.root,
+                backend="test",
+                prompt="task",
+                summary="done",
+                metadata={},
+                pr_branch="original-branch",
+                commit_sha="abc123",
+            )
+
+        assert metadata["pr_status"] == "created"
+        call_kwargs = mock_gh.create_pr.call_args
+        assert "automated hand update" in call_kwargs[1]["title"]
+        assert "Follow-up to #10" in call_kwargs[1]["body"]

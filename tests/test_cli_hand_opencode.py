@@ -107,3 +107,53 @@ class TestCommandNotFoundMessage:
         msg = opencode_hand._command_not_found_message("opencode")
         assert "opencode" in msg
         assert "HELPING_HANDS_OPENCODE_CLI_CMD" in msg
+
+
+# ---------------------------------------------------------------------------
+# _build_failure_message — delegates to static method
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFailureMessage:
+    def test_delegates_to_static(self, opencode_hand) -> None:
+        msg = opencode_hand._build_failure_message(return_code=2, output="some error")
+        assert "OpenCode CLI failed (exit=2)" in msg
+
+    def test_auth_detection_via_instance(self, opencode_hand) -> None:
+        msg = opencode_hand._build_failure_message(
+            return_code=1, output="authentication failed"
+        )
+        assert "authentication failed" in msg
+
+
+# ---------------------------------------------------------------------------
+# _build_opencode_failure_message — additional auth token variations
+# ---------------------------------------------------------------------------
+
+
+class TestBuildOpenCodeFailureMessageExtraTokens:
+    def test_authentication_failed_token(self) -> None:
+        msg = OpenCodeCLIHand._build_opencode_failure_message(
+            return_code=1, output="Error: authentication failed please retry"
+        )
+        assert "authentication failed" in msg
+        assert "opencode auth login" in msg.lower() or "API key" in msg
+
+    def test_case_insensitive_detection(self) -> None:
+        msg = OpenCodeCLIHand._build_opencode_failure_message(
+            return_code=1, output="INVALID API KEY provided"
+        )
+        assert "authentication failed" in msg
+
+    def test_non_auth_error_does_not_match(self) -> None:
+        msg = OpenCodeCLIHand._build_opencode_failure_message(
+            return_code=1, output="connection timeout"
+        )
+        assert "authentication failed" not in msg
+        assert "OpenCode CLI failed" in msg
+
+    def test_exit_code_in_generic(self) -> None:
+        msg = OpenCodeCLIHand._build_opencode_failure_message(
+            return_code=42, output="kaboom"
+        )
+        assert "exit=42" in msg

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -861,3 +862,362 @@ class TestExecuteToolRequests:
         hand = _make_hand(tmp_path)
         result = hand._execute_tool_requests("no tools here")
         assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# Async helper
+# ---------------------------------------------------------------------------
+
+
+async def _collect_stream(hand, prompt: str) -> list[str]:
+    chunks: list[str] = []
+    async for chunk in hand.stream(prompt):
+        chunks.append(chunk)
+    return chunks
+
+
+def _make_langgraph_hand(tmp_path, *, max_iterations=2):
+    """Build a BasicLangGraphHand with _build_agent mocked."""
+    (tmp_path / "main.py").write_text("")
+    repo_index = RepoIndex.from_path(tmp_path)
+    config = Config(repo=str(tmp_path), model="openai/gpt-test")
+    mock_agent = MagicMock()
+    with patch.object(BasicLangGraphHand, "_build_agent", return_value=mock_agent):
+        hand = BasicLangGraphHand(config, repo_index, max_iterations=max_iterations)
+    return hand, mock_agent
+
+
+def _make_atomic_hand(tmp_path, *, max_iterations=2):
+    """Build a BasicAtomicHand with _build_agent mocked."""
+    (tmp_path / "main.py").write_text("")
+    repo_index = RepoIndex.from_path(tmp_path)
+    config = Config(repo=str(tmp_path), model="openai/gpt-test")
+    mock_agent = MagicMock()
+    with patch.object(BasicAtomicHand, "_build_agent", return_value=mock_agent):
+        hand = BasicAtomicHand(config, repo_index, max_iterations=max_iterations)
+    hand._input_schema = type("FakeInput", (), {"__init__": lambda s, **kw: None})
+    return hand, mock_agent
+
+
+# ---------------------------------------------------------------------------
+# BasicLangGraphHand.stream() — coverage for lines 598-677
+# ---------------------------------------------------------------------------
+
+
+class TestBasicLangGraphHandStream:
+    def test_stream_satisfied_first_iteration(self, tmp_path) -> None:
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=3)
+
+        chunk = MagicMock()
+        chunk.content = "All done.\nSATISFIED: yes"
+
+        async def _fake_events(*args, **kwargs):
+            yield {"event": "on_chat_model_stream", "data": {"chunk": chunk}}
+
+        mock_agent.astream_events = _fake_events
+
+        with patch.object(
+            hand, "_finalize_repo_pr", return_value={"pr_url": "https://pr/1"}
+        ):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "satisfied" in text.lower() or "Task marked satisfied" in text
+        assert "PR created" in text
+
+    def test_stream_max_iterations_reached(self, tmp_path) -> None:
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=2)
+
+        chunk = MagicMock()
+        chunk.content = "Working.\nSATISFIED: no"
+
+        async def _fake_events(*args, **kwargs):
+            yield {"event": "on_chat_model_stream", "data": {"chunk": chunk}}
+
+        mock_agent.astream_events = _fake_events
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "Max iterations reached" in text
+
+    def test_stream_max_iterations_with_pr_status(self, tmp_path) -> None:
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=1)
+
+        chunk = MagicMock()
+        chunk.content = "Partial.\nSATISFIED: no"
+
+        async def _fake_events(*args, **kwargs):
+            yield {"event": "on_chat_model_stream", "data": {"chunk": chunk}}
+
+        mock_agent.astream_events = _fake_events
+
+        with patch.object(
+            hand, "_finalize_repo_pr", return_value={"pr_status": "error"}
+        ):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "PR status: error" in text
+
+    def test_stream_interrupted_before_iteration(self, tmp_path) -> None:
+        hand, _mock_agent = _make_langgraph_hand(tmp_path)
+
+        # Interrupt after reset_interrupt runs but before first iteration
+        orig_build = hand._build_bootstrap_context
+
+        def interrupt_then_build():
+            result = orig_build()
+            hand.interrupt()
+            return result
+
+        hand._build_bootstrap_context = interrupt_then_build
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "[interrupted]" in text
+
+    def test_stream_interrupted_mid_stream(self, tmp_path) -> None:
+        hand, mock_agent = _make_langgraph_hand(tmp_path)
+
+        call_count = 0
+
+        async def _fake_events(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            chunk = MagicMock()
+            chunk.content = "working"
+            yield {"event": "on_chat_model_stream", "data": {"chunk": chunk}}
+            # Interrupt after first iteration's stream
+            if call_count >= 1:
+                hand.interrupt()
+
+        mock_agent.astream_events = _fake_events
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "[interrupted]" in text
+
+    def test_stream_yields_file_changes_and_tool_results(self, tmp_path) -> None:
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=1)
+
+        chunk = MagicMock()
+        chunk.content = (
+            "@@FILE: main.py\n```python\nprint('hi')\n```\n"
+            "@@READ: main.py\n"
+            "SATISFIED: no"
+        )
+
+        async def _fake_events(*args, **kwargs):
+            yield {"event": "on_chat_model_stream", "data": {"chunk": chunk}}
+
+        mock_agent.astream_events = _fake_events
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "[files updated]" in text
+        assert "[tool results]" in text
+
+    def test_stream_satisfied_no_pr_url_no_changes(self, tmp_path) -> None:
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=2)
+
+        chunk = MagicMock()
+        chunk.content = "Done.\nSATISFIED: yes"
+
+        async def _fake_events(*args, **kwargs):
+            yield {"event": "on_chat_model_stream", "data": {"chunk": chunk}}
+
+        mock_agent.astream_events = _fake_events
+
+        with patch.object(
+            hand, "_finalize_repo_pr", return_value={"pr_status": "no_changes"}
+        ):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "Task marked satisfied" in text
+        assert "PR created" not in text
+        assert "PR status" not in text
+
+    def test_stream_auth_header(self, tmp_path) -> None:
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=1)
+
+        chunk = MagicMock()
+        chunk.content = "SATISFIED: yes"
+
+        async def _fake_events(*args, **kwargs):
+            yield {"event": "on_chat_model_stream", "data": {"chunk": chunk}}
+
+        mock_agent.astream_events = _fake_events
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        first = chunks[0]
+        assert "[basic-langgraph]" in first
+        assert "provider=" in first
+
+
+# ---------------------------------------------------------------------------
+# BasicAtomicHand.stream() — coverage for lines 795-900
+# ---------------------------------------------------------------------------
+
+
+class TestBasicAtomicHandStream:
+    def test_stream_satisfied_first_iteration(self, tmp_path) -> None:
+        hand, mock_agent = _make_atomic_hand(tmp_path, max_iterations=3)
+
+        partial = MagicMock()
+        partial.chat_message = "Done.\nSATISFIED: yes"
+
+        async def _fake_run_async(_input):
+            yield partial
+
+        mock_agent.run_async = _fake_run_async
+
+        with patch.object(
+            hand, "_finalize_repo_pr", return_value={"pr_url": "https://pr/2"}
+        ):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "Task marked satisfied" in text
+        assert "PR created" in text
+
+    def test_stream_max_iterations(self, tmp_path) -> None:
+        hand, mock_agent = _make_atomic_hand(tmp_path, max_iterations=2)
+
+        partial = MagicMock()
+        partial.chat_message = "Working.\nSATISFIED: no"
+
+        async def _fake_run_async(_input):
+            yield partial
+
+        mock_agent.run_async = _fake_run_async
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "Max iterations reached" in text
+
+    def test_stream_interrupted(self, tmp_path) -> None:
+        hand, _mock_agent = _make_atomic_hand(tmp_path)
+
+        orig_build = hand._build_bootstrap_context
+
+        def interrupt_then_build():
+            result = orig_build()
+            hand.interrupt()
+            return result
+
+        hand._build_bootstrap_context = interrupt_then_build
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "[interrupted]" in text
+
+    def test_stream_assertion_error_fallback(self, tmp_path) -> None:
+        hand, mock_agent = _make_atomic_hand(tmp_path, max_iterations=1)
+
+        sync_partial = MagicMock()
+        sync_partial.chat_message = "Sync fallback.\nSATISFIED: yes"
+
+        def _sync_run(_input):
+            return sync_partial
+
+        def _async_raise(_input):
+            raise AssertionError("async not supported")
+
+        mock_agent.run_async = _async_raise
+        mock_agent.run = _sync_run
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "Sync fallback" in text
+
+    def test_stream_awaitable_result(self, tmp_path) -> None:
+        hand, mock_agent = _make_atomic_hand(tmp_path, max_iterations=1)
+
+        partial = MagicMock()
+        partial.chat_message = "Awaited.\nSATISFIED: yes"
+
+        async def _fake_run_async(_input):
+            return partial
+
+        mock_agent.run_async = _fake_run_async
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "Awaited" in text
+
+    def test_stream_awaitable_assertion_fallback(self, tmp_path) -> None:
+        hand, mock_agent = _make_atomic_hand(tmp_path, max_iterations=1)
+
+        sync_partial = MagicMock()
+        sync_partial.chat_message = "Sync via await fallback.\nSATISFIED: yes"
+
+        async def _fake_run_async(_input):
+            raise AssertionError("not supported")
+
+        def _sync_run(_input):
+            return sync_partial
+
+        mock_agent.run_async = _fake_run_async
+        mock_agent.run = _sync_run
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "Sync via await fallback" in text
+
+    def test_stream_pr_status_on_max_iterations(self, tmp_path) -> None:
+        hand, mock_agent = _make_atomic_hand(tmp_path, max_iterations=1)
+
+        partial = MagicMock()
+        partial.chat_message = "Partial.\nSATISFIED: no"
+
+        async def _fake_run_async(_input):
+            yield partial
+
+        mock_agent.run_async = _fake_run_async
+
+        with patch.object(
+            hand, "_finalize_repo_pr", return_value={"pr_status": "error"}
+        ):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "PR status: error" in text
+
+    def test_stream_auth_header(self, tmp_path) -> None:
+        hand, mock_agent = _make_atomic_hand(tmp_path, max_iterations=1)
+
+        partial = MagicMock()
+        partial.chat_message = "SATISFIED: yes"
+
+        async def _fake_run_async(_input):
+            yield partial
+
+        mock_agent.run_async = _fake_run_async
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        first = chunks[0]
+        assert "[basic-atomic]" in first
+        assert "provider=" in first

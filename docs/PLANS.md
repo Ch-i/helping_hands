@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v26](exec-plans/completed/docs-and-testing-v26.md) —
+  BasicLangGraphHand.stream() tests (8 tests: satisfied/max-iter/interrupt/file-changes/PR metadata/auth header); BasicAtomicHand.stream() tests (8 tests: satisfied/max-iter/interrupt/assertion-fallback/awaitable/PR status/auth header); OpenCodeCLIHand edge cases (`_build_failure_message` delegation, auth token variations, exit code); base.py PR helpers (`_update_pr_description` rich/fallback/exception-suppressed, `_create_pr_for_diverged_branch` rich/fallback); iterative.py coverage 79% -> 92%; QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v25](exec-plans/completed/docs-and-testing-v25.md) —
   Gemini CLI hand helper tests (`_describe_auth` key set/not set/empty, `_pr_description_cmd` found/not found, `_command_not_found_message`); Codex CLI hand helper tests (`_command_not_found_message`, `_native_cli_auth_env_names`, `_apply_codex_exec_sandbox_defaults` empty/whitespace env override fallback); QUALITY_SCORE.md updates (completed 2026-03-05)
 
