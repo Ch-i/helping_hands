@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v31](exec-plans/completed/docs-and-testing-v31.md) —
+  Fixed ARCHITECTURE.md key file paths table formatting (merged dangling Docker sandbox entry); _StreamJsonEmitter edge case tests (empty text block, result without cost/duration, partial api summary, empty/whitespace tool_result content, non-tool_result blocks, non-dict list items, empty flush, multiple newlines, unknown event type); _invoke_claude/_invoke_backend async tests (emitter wiring, raw fallback, delegation); claude.py coverage maintained at 97%; 1256 tests pass (completed 2026-03-05)
+
 - [Docs and Testing v30](exec-plans/completed/docs-and-testing-v30.md) —
   Config edge case tests (`_load_env_files` no-dotenv early return, bool tool/skill override normalization to empty tuple); skills edge case tests (`normalize_skill_selection` non-string ValueError, `stage_skill_catalog` missing .md skip); ARCHITECTURE.md + DESIGN.md updated with DockerSandboxClaudeCodeHand; config.py 89%+, skills 94% -> 96%; QUALITY_SCORE.md updates (completed 2026-03-05)
 
