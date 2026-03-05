@@ -299,9 +299,24 @@ class Hand(abc.ABC):
         base_branch = str(pr_info["base"])
         pr_url = str(pr_info["url"])
 
+        from helping_hands.lib.hands.v1.hand.pr_description import (
+            generate_commit_message,
+        )
+
+        commit_msg = (
+            generate_commit_message(
+                cmd=self._pr_description_cmd(),
+                repo_dir=repo_dir,
+                backend=backend,
+                prompt=prompt,
+                summary=summary,
+            )
+            or f"feat({backend}): apply hand updates"
+        )
+
         commit_sha = gh.add_and_commit(
             repo_dir,
-            f"feat({backend}): apply hand updates",
+            commit_msg,
         )
 
         try:
@@ -547,9 +562,25 @@ class Hand(abc.ABC):
 
                 branch = f"helping-hands/{backend}-{uuid4().hex[:8]}"
                 gh.create_branch(repo_dir, branch)
+
+                from helping_hands.lib.hands.v1.hand.pr_description import (
+                    generate_commit_message,
+                )
+
+                commit_msg = (
+                    generate_commit_message(
+                        cmd=self._pr_description_cmd(),
+                        repo_dir=repo_dir,
+                        backend=backend,
+                        prompt=prompt,
+                        summary=summary,
+                    )
+                    or f"feat({backend}): apply hand updates"
+                )
+
                 commit_sha = gh.add_and_commit(
                     repo_dir,
-                    f"feat({backend}): apply hand updates",
+                    commit_msg,
                 )
                 self._push_noninteractive(gh, repo_dir, branch)
 

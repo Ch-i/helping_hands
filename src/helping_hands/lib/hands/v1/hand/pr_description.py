@@ -1,10 +1,10 @@
-"""Generate rich PR descriptions using a CLI tool.
+"""Generate rich PR descriptions and commit messages using a CLI tool.
 
-This module provides a self-contained function that invokes a CLI tool
+This module provides self-contained functions that invoke a CLI tool
 (e.g. ``claude -p``, ``gemini -p``) to produce a descriptive PR title and
-body from a git diff.  It is designed to be called from
-``Hand._finalize_repo_pr()`` and falls back gracefully when no CLI is
-available or generation fails.
+body from a git diff, as well as meaningful commit messages.  It is designed
+to be called from ``Hand._finalize_repo_pr()`` and falls back gracefully
+when no CLI is available or generation fails.
 """
 
 from __future__ import annotations
@@ -251,3 +251,204 @@ def generate_pr_description(
 
     logger.info("Generated rich PR description via %s: %s", cli_label, parsed.title)
     return parsed
+
+
+# ------------------------------------------------------------------
+# Commit message generation
+# ------------------------------------------------------------------
+
+_COMMIT_MSG_DIFF_LIMIT = 8_000
+_COMMIT_MSG_TIMEOUT = 30.0
+
+
+def _get_uncommitted_diff(repo_dir: Path) -> str:
+    """Get the diff of uncommitted changes (both staged and unstaged).
+
+    Stages all changes first so new files are included, then reads
+    ``git diff --cached``.
+    """
+    subprocess.run(
+        ["git", "add", "."],
+        cwd=repo_dir,
+        capture_output=True,
+        check=False,
+    )
+    result = subprocess.run(
+        ["git", "diff", "--cached"],
+        cwd=repo_dir,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    return ""
+
+
+def _build_commit_message_prompt(
+    *,
+    diff: str,
+    backend: str,
+    user_prompt: str,
+    summary: str,
+) -> str:
+    """Build the prompt that asks the CLI to generate a commit message."""
+    summary_section = ""
+    if summary.strip():
+        truncated = summary.strip()[:1000]
+        summary_section = f"\n## AI Summary of Changes\n{truncated}\n"
+
+    return (
+        "You are generating a git commit message for a code change.\n\n"
+        "Instructions:\n"
+        "- Write a single-line commit message under 72 characters.\n"
+        "- Use conventional commit style (e.g., feat:, fix:, refactor:, docs:, chore:).\n"
+        "- Be specific about WHAT changed — do not use generic messages like "
+        '"apply updates" or "make changes".\n'
+        "- Focus on the purpose/effect of the change, not the mechanism.\n"
+        "- Do NOT include a scope in parentheses.\n\n"
+        "Output format — reply with ONLY this line, nothing else:\n"
+        "COMMIT_MSG: <your message here>\n\n"
+        f"## Context\n"
+        f"- Backend: {backend}\n"
+        f"- Original task prompt: {user_prompt[:500]}\n"
+        f"{summary_section}\n"
+        f"## Git Diff\n"
+        f"```diff\n{diff}\n```\n"
+    )
+
+
+def _parse_commit_message(output: str) -> str | None:
+    """Extract the commit message from CLI output.
+
+    Returns ``None`` if the output cannot be parsed.
+    """
+    for line in output.split("\n"):
+        if line.startswith("COMMIT_MSG:"):
+            msg = line[len("COMMIT_MSG:") :].strip()
+            if msg:
+                return msg[:72]
+    return None
+
+
+def _commit_message_from_prompt(prompt: str, summary: str) -> str:
+    """Derive a commit message heuristically from the task prompt or summary.
+
+    Used as a fallback when no CLI tool is available.  Picks the most
+    informative source (summary first, then prompt), extracts the first
+    sentence, and formats it as a conventional commit message.
+    """
+    import re
+
+    # Prefer summary (the AI's description of what it did) over the raw prompt.
+    source = summary.strip() if summary.strip() else prompt.strip()
+    if not source:
+        return ""
+
+    # Take the first sentence / line, whichever is shorter.
+    first_line = source.split("\n", 1)[0].strip()
+    # Split on sentence-ending punctuation followed by a space or end.
+    sentence_match = re.match(r"^(.+?[.!?])(?:\s|$)", first_line)
+    text = sentence_match.group(1) if sentence_match else first_line
+
+    # Strip leading conventional-commit prefix if already present.
+    stripped = re.sub(
+        r"^(feat|fix|refactor|docs|chore|test|style|ci|perf|build)\b[:(]?\s*[)]?\s*",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = stripped if stripped else text
+
+    # Lowercase first char, strip trailing period.
+    text = text[0].lower() + text[1:] if text else text
+    text = text.rstrip(".")
+
+    # Assemble with prefix and enforce 72-char limit.
+    msg = f"feat: {text}"
+    return msg[:72]
+
+
+def generate_commit_message(
+    *,
+    cmd: list[str] | None,
+    repo_dir: Path,
+    backend: str,
+    prompt: str,
+    summary: str,
+) -> str | None:
+    """Generate a meaningful commit message using a CLI tool.
+
+    Returns a commit message string, or ``None`` if generation is disabled,
+    unavailable, or fails.  The caller should fall back to a default message.
+
+    When *cmd* is ``None`` (no CLI available), falls back to deriving a
+    commit message from *prompt* / *summary* heuristically.
+
+    This stages all changes (``git add .``) as a side effect so the diff
+    includes new files.  The subsequent ``git commit`` will use the staged
+    changes.
+    """
+    if _is_disabled():
+        return None
+
+    if cmd is None:
+        msg = _commit_message_from_prompt(prompt, summary)
+        if msg:
+            logger.info("Generated commit message from prompt: %s", msg)
+        return msg or None
+
+    diff = _get_uncommitted_diff(repo_dir)
+    if not diff:
+        return None
+
+    truncated_diff = _truncate_diff(diff, limit=_COMMIT_MSG_DIFF_LIMIT)
+
+    cli_prompt = _build_commit_message_prompt(
+        diff=truncated_diff,
+        backend=backend,
+        user_prompt=prompt,
+        summary=summary,
+    )
+
+    cli_label = cmd[0] if cmd else "cli"
+    try:
+        result = subprocess.run(
+            cmd,
+            input=cli_prompt,
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=_COMMIT_MSG_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        logger.warning(
+            "%s commit message generation timed out.",
+            cli_label,
+        )
+        return None
+    except FileNotFoundError:
+        logger.debug("%s CLI not found for commit message generation.", cli_label)
+        return None
+
+    if result.returncode != 0:
+        logger.warning(
+            "%s commit message generation failed (exit=%d): %s",
+            cli_label,
+            result.returncode,
+            result.stderr.strip()[-300:],
+        )
+        return None
+
+    msg = _parse_commit_message(result.stdout)
+    if msg is None:
+        logger.warning(
+            "Could not parse %s commit message output: %s",
+            cli_label,
+            result.stdout.strip()[-300:],
+        )
+        return None
+
+    logger.info("Generated commit message via %s: %s", cli_label, msg)
+    return msg

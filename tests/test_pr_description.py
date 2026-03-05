@@ -10,13 +10,18 @@ import pytest
 
 from helping_hands.lib.hands.v1.hand.pr_description import (
     PRDescription,
+    _build_commit_message_prompt,
     _build_prompt,
+    _commit_message_from_prompt,
     _diff_char_limit,
     _get_diff,
+    _get_uncommitted_diff,
     _is_disabled,
+    _parse_commit_message,
     _parse_output,
     _timeout_seconds,
     _truncate_diff,
+    generate_commit_message,
     generate_pr_description,
 )
 
@@ -497,3 +502,317 @@ class TestPRDescriptionDataclass:
         desc = PRDescription(title="my title", body="my body")
         assert desc.title == "my title"
         assert desc.body == "my body"
+
+
+# ===========================================================================
+# Commit message generation tests
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# _get_uncommitted_diff
+# ---------------------------------------------------------------------------
+
+
+class TestGetUncommittedDiff:
+    @patch("helping_hands.lib.hands.v1.hand.pr_description.subprocess.run")
+    def test_stages_and_returns_cached_diff(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.side_effect = [
+            # git add .
+            subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+            # git diff --cached
+            subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="diff --git a/f.py\n+new line\n"
+            ),
+        ]
+        result = _get_uncommitted_diff(tmp_path)
+        assert "new line" in result
+        assert mock_run.call_count == 2
+
+    @patch("helping_hands.lib.hands.v1.hand.pr_description.subprocess.run")
+    def test_returns_empty_when_no_diff(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.side_effect = [
+            subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+            subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
+        ]
+        assert _get_uncommitted_diff(tmp_path) == ""
+
+
+# ---------------------------------------------------------------------------
+# _build_commit_message_prompt
+# ---------------------------------------------------------------------------
+
+
+class TestBuildCommitMessagePrompt:
+    def test_includes_diff_and_context(self) -> None:
+        result = _build_commit_message_prompt(
+            diff="diff content here",
+            backend="claudecodecli",
+            user_prompt="add login feature",
+            summary="",
+        )
+        assert "diff content here" in result
+        assert "claudecodecli" in result
+        assert "add login feature" in result
+        assert "COMMIT_MSG:" in result
+
+    def test_includes_summary_when_provided(self) -> None:
+        result = _build_commit_message_prompt(
+            diff="diff",
+            backend="test",
+            user_prompt="task",
+            summary="Added auth module with JWT support.",
+        )
+        assert "AI Summary of Changes" in result
+        assert "Added auth module with JWT support." in result
+
+    def test_omits_summary_when_empty(self) -> None:
+        result = _build_commit_message_prompt(
+            diff="diff",
+            backend="test",
+            user_prompt="task",
+            summary="",
+        )
+        assert "AI Summary of Changes" not in result
+
+
+# ---------------------------------------------------------------------------
+# _parse_commit_message
+# ---------------------------------------------------------------------------
+
+
+class TestParseCommitMessage:
+    def test_valid_output(self) -> None:
+        assert (
+            _parse_commit_message("COMMIT_MSG: feat: add user authentication")
+            == "feat: add user authentication"
+        )
+
+    def test_with_extra_lines(self) -> None:
+        output = (
+            "Here is the message:\n\nCOMMIT_MSG: fix: resolve null pointer in login\n"
+        )
+        assert _parse_commit_message(output) == "fix: resolve null pointer in login"
+
+    def test_returns_none_for_missing_marker(self) -> None:
+        assert _parse_commit_message("just some text") is None
+
+    def test_returns_none_for_empty_message(self) -> None:
+        assert _parse_commit_message("COMMIT_MSG: ") is None
+
+    def test_truncates_to_72_chars(self) -> None:
+        long_msg = "feat: " + "x" * 100
+        result = _parse_commit_message(f"COMMIT_MSG: {long_msg}")
+        assert result is not None
+        assert len(result) == 72
+
+
+# ---------------------------------------------------------------------------
+# generate_commit_message
+# ---------------------------------------------------------------------------
+
+
+class TestCommitMessageFromPrompt:
+    def test_uses_summary_over_prompt(self) -> None:
+        result = _commit_message_from_prompt("add login", "Added OAuth2 login flow")
+        assert "added OAuth2 login flow" in result
+
+    def test_falls_back_to_prompt_when_summary_empty(self) -> None:
+        result = _commit_message_from_prompt("add user authentication", "")
+        assert "add user authentication" in result
+
+    def test_returns_empty_when_both_empty(self) -> None:
+        assert _commit_message_from_prompt("", "") == ""
+
+    def test_takes_first_sentence(self) -> None:
+        result = _commit_message_from_prompt(
+            "", "Fixed the login crash. Also cleaned up utils."
+        )
+        assert "fixed the login crash" in result
+        assert "cleaned up" not in result
+
+    def test_takes_first_line(self) -> None:
+        result = _commit_message_from_prompt(
+            "", "Added new endpoint\nAlso refactored the router"
+        )
+        assert "added new endpoint" in result
+        assert "refactored" not in result
+
+    def test_strips_existing_prefix(self) -> None:
+        result = _commit_message_from_prompt("", "feat: add new button")
+        assert result == "feat: add new button"
+        assert not result.startswith("feat: feat:")
+
+    def test_enforces_72_char_limit(self) -> None:
+        long_prompt = "x" * 200
+        result = _commit_message_from_prompt(long_prompt, "")
+        assert len(result) <= 72
+
+    def test_starts_with_conventional_prefix(self) -> None:
+        result = _commit_message_from_prompt("add dark mode toggle", "")
+        assert result.startswith("feat: ")
+
+
+class TestGenerateCommitMessage:
+    def _common_kwargs(self, tmp_path: Path) -> dict:
+        return {
+            "cmd": _SAMPLE_CMD,
+            "repo_dir": tmp_path,
+            "backend": "claudecodecli",
+            "prompt": "add feature",
+            "summary": "done",
+        }
+
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=False,
+    )
+    def test_falls_back_to_prompt_when_cmd_is_none(
+        self, _mock: MagicMock, tmp_path: Path
+    ) -> None:
+        kwargs = self._common_kwargs(tmp_path)
+        kwargs["cmd"] = None
+        result = generate_commit_message(**kwargs)
+        assert result is not None
+        assert "done" in result  # uses summary
+
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=False,
+    )
+    def test_returns_none_when_cmd_is_none_and_no_prompt(
+        self, _mock: MagicMock, tmp_path: Path
+    ) -> None:
+        result = generate_commit_message(
+            cmd=None, repo_dir=tmp_path, backend="test", prompt="", summary=""
+        )
+        assert result is None
+
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=True,
+    )
+    def test_returns_none_when_disabled(self, _mock: MagicMock, tmp_path: Path) -> None:
+        assert generate_commit_message(**self._common_kwargs(tmp_path)) is None
+
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._get_uncommitted_diff",
+        return_value="",
+    )
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=False,
+    )
+    def test_returns_none_when_no_diff(
+        self, _d: MagicMock, _g: MagicMock, tmp_path: Path
+    ) -> None:
+        assert generate_commit_message(**self._common_kwargs(tmp_path)) is None
+
+    @patch("helping_hands.lib.hands.v1.hand.pr_description.subprocess.run")
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._get_uncommitted_diff",
+        return_value="diff content",
+    )
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=False,
+    )
+    def test_returns_none_on_timeout(
+        self,
+        _d: MagicMock,
+        _g: MagicMock,
+        mock_run: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd="claude", timeout=30)
+        assert generate_commit_message(**self._common_kwargs(tmp_path)) is None
+
+    @patch("helping_hands.lib.hands.v1.hand.pr_description.subprocess.run")
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._get_uncommitted_diff",
+        return_value="diff content",
+    )
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=False,
+    )
+    def test_returns_none_on_nonzero_exit(
+        self,
+        _d: MagicMock,
+        _g: MagicMock,
+        mock_run: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="", stderr="error"
+        )
+        assert generate_commit_message(**self._common_kwargs(tmp_path)) is None
+
+    @patch("helping_hands.lib.hands.v1.hand.pr_description.subprocess.run")
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._get_uncommitted_diff",
+        return_value="diff content",
+    )
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=False,
+    )
+    def test_returns_none_on_unparseable_output(
+        self,
+        _d: MagicMock,
+        _g: MagicMock,
+        mock_run: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="no markers here", stderr=""
+        )
+        assert generate_commit_message(**self._common_kwargs(tmp_path)) is None
+
+    @patch("helping_hands.lib.hands.v1.hand.pr_description.subprocess.run")
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._get_uncommitted_diff",
+        return_value="diff content",
+    )
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=False,
+    )
+    def test_returns_message_on_success(
+        self,
+        _d: MagicMock,
+        _g: MagicMock,
+        mock_run: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="COMMIT_MSG: feat: add user authentication with OAuth2\n",
+            stderr="",
+        )
+        result = generate_commit_message(**self._common_kwargs(tmp_path))
+        assert result == "feat: add user authentication with OAuth2"
+
+    @patch("helping_hands.lib.hands.v1.hand.pr_description.subprocess.run")
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._get_uncommitted_diff",
+        return_value="diff content",
+    )
+    @patch(
+        "helping_hands.lib.hands.v1.hand.pr_description._is_disabled",
+        return_value=False,
+    )
+    def test_returns_none_on_file_not_found(
+        self,
+        _d: MagicMock,
+        _g: MagicMock,
+        mock_run: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_run.side_effect = FileNotFoundError("cli not found")
+        assert generate_commit_message(**self._common_kwargs(tmp_path)) is None
