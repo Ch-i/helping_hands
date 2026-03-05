@@ -412,6 +412,63 @@ class TestHandABC:
 
 
 # ---------------------------------------------------------------------------
+# _default_base_branch
+# ---------------------------------------------------------------------------
+
+
+class TestDefaultBaseBranch:
+    def test_returns_main_by_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("HELPING_HANDS_BASE_BRANCH", raising=False)
+        assert Hand._default_base_branch() == "main"
+
+    def test_respects_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("HELPING_HANDS_BASE_BRANCH", "develop")
+        assert Hand._default_base_branch() == "develop"
+
+
+# ---------------------------------------------------------------------------
+# _build_generic_pr_body
+# ---------------------------------------------------------------------------
+
+
+class TestBuildGenericPrBody:
+    def test_contains_all_fields(self) -> None:
+        body = Hand._build_generic_pr_body(
+            backend="basic-langgraph",
+            prompt="add feature X",
+            summary="Implemented feature X with tests",
+            commit_sha="abc123",
+            stamp_utc="2026-03-05T00:00:00+00:00",
+        )
+        assert "basic-langgraph" in body
+        assert "add feature X" in body
+        assert "abc123" in body
+        assert "2026-03-05T00:00:00+00:00" in body
+        assert "Implemented feature X with tests" in body
+        assert "## Summary" in body
+
+    def test_empty_summary_shows_fallback(self) -> None:
+        body = Hand._build_generic_pr_body(
+            backend="test",
+            prompt="do stuff",
+            summary="",
+            commit_sha="def456",
+            stamp_utc="2026-01-01T00:00:00+00:00",
+        )
+        assert "No summary provided." in body
+
+    def test_whitespace_only_summary_shows_fallback(self) -> None:
+        body = Hand._build_generic_pr_body(
+            backend="test",
+            prompt="do stuff",
+            summary="   \n  ",
+            commit_sha="def456",
+            stamp_utc="2026-01-01T00:00:00+00:00",
+        )
+        assert "No summary provided." in body
+
+
+# ---------------------------------------------------------------------------
 # Hand skill resolution
 # ---------------------------------------------------------------------------
 

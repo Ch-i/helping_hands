@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v8](exec-plans/completed/docs-and-testing-v8.md) —
+  Format helper tests (CommandResult, WebSearchResult, WebBrowseResult), tool config helpers, base.py static helpers (_default_base_branch, _build_generic_pr_body); QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v7](exec-plans/completed/docs-and-testing-v7.md) —
   Dedicated test suites for Claude, Codex, Gemini, OpenCode CLI hands (106 tests); DESIGN.md CLI backend patterns (completed 2026-03-05)
 - [Docs and Testing v6](exec-plans/completed/docs-and-testing-v6.md) —

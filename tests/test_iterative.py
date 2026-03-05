@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from helping_hands.lib.hands.v1.hand.iterative import _BasicIterativeHand
+from helping_hands.lib.meta.tools.command import CommandResult
+from helping_hands.lib.meta.tools.web import (
+    WebBrowseResult,
+    WebSearchItem,
+    WebSearchResult,
+)
 
 # ---------------------------------------------------------------------------
 # _is_satisfied
@@ -258,3 +266,249 @@ class TestMergeIterationSummary:
         assert "content" in result
         assert "Tool results:" in result
         assert "tool output" in result
+
+
+# ---------------------------------------------------------------------------
+# _format_command
+# ---------------------------------------------------------------------------
+
+
+class TestFormatCommand:
+    def test_simple_tokens(self):
+        assert _BasicIterativeHand._format_command(["ls", "-la"]) == "ls -la"
+
+    def test_tokens_with_spaces_are_quoted(self):
+        result = _BasicIterativeHand._format_command(["echo", "hello world"])
+        assert result == "echo 'hello world'"
+
+    def test_empty_command(self):
+        assert _BasicIterativeHand._format_command([]) == ""
+
+    def test_special_characters(self):
+        result = _BasicIterativeHand._format_command(["grep", "foo|bar"])
+        assert "'foo|bar'" in result
+
+
+# ---------------------------------------------------------------------------
+# _format_command_result
+# ---------------------------------------------------------------------------
+
+
+class TestFormatCommandResult:
+    def test_successful_result(self):
+        cr = CommandResult(
+            command=["echo", "hi"],
+            cwd="/tmp",
+            exit_code=0,
+            stdout="hi\n",
+            stderr="",
+        )
+        output = _BasicIterativeHand._format_command_result(
+            tool_name="shell_exec", result=cr
+        )
+        assert "@@TOOL_RESULT: shell_exec" in output
+        assert "status: success" in output
+        assert "exit_code: 0" in output
+        assert "timed_out: false" in output
+        assert "cwd: /tmp" in output
+        assert "command: echo hi" in output
+        assert "hi\n" in output
+
+    def test_failed_result(self):
+        cr = CommandResult(
+            command=["false"],
+            cwd="/tmp",
+            exit_code=1,
+            stdout="",
+            stderr="error occurred",
+        )
+        output = _BasicIterativeHand._format_command_result(
+            tool_name="shell_exec", result=cr
+        )
+        assert "status: failure" in output
+        assert "exit_code: 1" in output
+        assert "error occurred" in output
+
+    def test_timed_out_result(self):
+        cr = CommandResult(
+            command=["sleep", "999"],
+            cwd="/tmp",
+            exit_code=-1,
+            stdout="",
+            stderr="",
+            timed_out=True,
+        )
+        output = _BasicIterativeHand._format_command_result(
+            tool_name="shell_exec", result=cr
+        )
+        assert "timed_out: true" in output
+
+    def test_truncated_stdout(self):
+        long_stdout = "x" * (_BasicIterativeHand._MAX_TOOL_OUTPUT_CHARS + 100)
+        cr = CommandResult(
+            command=["cat", "big"],
+            cwd="/tmp",
+            exit_code=0,
+            stdout=long_stdout,
+            stderr="",
+        )
+        output = _BasicIterativeHand._format_command_result(
+            tool_name="shell_exec", result=cr
+        )
+        assert "[truncated]" in output
+
+    def test_truncated_stderr(self):
+        long_stderr = "e" * (_BasicIterativeHand._MAX_TOOL_OUTPUT_CHARS + 100)
+        cr = CommandResult(
+            command=["fail"],
+            cwd="/tmp",
+            exit_code=1,
+            stdout="",
+            stderr=long_stderr,
+        )
+        output = _BasicIterativeHand._format_command_result(
+            tool_name="shell_exec", result=cr
+        )
+        assert output.count("[truncated]") >= 1
+
+
+# ---------------------------------------------------------------------------
+# _format_web_search_result
+# ---------------------------------------------------------------------------
+
+
+class TestFormatWebSearchResult:
+    def test_basic_search_result(self):
+        result = WebSearchResult(
+            query="python docs",
+            results=[
+                WebSearchItem(
+                    title="Python.org",
+                    url="https://python.org",
+                    snippet="Welcome to Python",
+                ),
+            ],
+        )
+        output = _BasicIterativeHand._format_web_search_result(
+            tool_name="web_search", result=result
+        )
+        assert "@@TOOL_RESULT: web_search" in output
+        assert "status: success" in output
+        assert "query: python docs" in output
+        assert "result_count: 1" in output
+        assert "Python.org" in output
+        assert "https://python.org" in output
+
+    def test_empty_results(self):
+        result = WebSearchResult(query="nothing", results=[])
+        output = _BasicIterativeHand._format_web_search_result(
+            tool_name="web_search", result=result
+        )
+        assert "result_count: 0" in output
+
+    def test_truncated_search_results(self):
+        items = [
+            WebSearchItem(
+                title=f"Result {i}",
+                url=f"https://example.com/{i}",
+                snippet="x" * 500,
+            )
+            for i in range(_BasicIterativeHand._MAX_TOOL_OUTPUT_CHARS // 100)
+        ]
+        result = WebSearchResult(query="large", results=items)
+        output = _BasicIterativeHand._format_web_search_result(
+            tool_name="web_search", result=result
+        )
+        assert "[truncated]" in output
+
+
+# ---------------------------------------------------------------------------
+# _format_web_browse_result
+# ---------------------------------------------------------------------------
+
+
+class TestFormatWebBrowseResult:
+    def test_basic_browse_result(self):
+        result = WebBrowseResult(
+            url="https://example.com",
+            final_url="https://example.com/page",
+            status_code=200,
+            content="Hello World",
+            truncated=False,
+        )
+        output = _BasicIterativeHand._format_web_browse_result(
+            tool_name="web_browse", result=result
+        )
+        assert "@@TOOL_RESULT: web_browse" in output
+        assert "status: success" in output
+        assert "url: https://example.com" in output
+        assert "final_url: https://example.com/page" in output
+        assert "status_code: 200" in output
+        assert "source_truncated: false" in output
+        assert "Hello World" in output
+
+    def test_source_truncated_flag(self):
+        result = WebBrowseResult(
+            url="https://example.com",
+            final_url="https://example.com",
+            status_code=200,
+            content="short",
+            truncated=True,
+        )
+        output = _BasicIterativeHand._format_web_browse_result(
+            tool_name="web_browse", result=result
+        )
+        assert "source_truncated: true" in output
+
+    def test_output_truncation(self):
+        long_content = "c" * (_BasicIterativeHand._MAX_TOOL_OUTPUT_CHARS + 100)
+        result = WebBrowseResult(
+            url="https://example.com",
+            final_url="https://example.com",
+            status_code=200,
+            content=long_content,
+            truncated=False,
+        )
+        output = _BasicIterativeHand._format_web_browse_result(
+            tool_name="web_browse", result=result
+        )
+        assert "[truncated]" in output
+
+    def test_none_status_code(self):
+        result = WebBrowseResult(
+            url="https://example.com",
+            final_url="https://example.com",
+            status_code=None,
+            content="ok",
+            truncated=False,
+        )
+        output = _BasicIterativeHand._format_web_browse_result(
+            tool_name="web_browse", result=result
+        )
+        assert "status_code: None" in output
+
+
+# ---------------------------------------------------------------------------
+# _tool_disabled_error
+# ---------------------------------------------------------------------------
+
+
+class TestToolDisabledError:
+    def test_known_tool_includes_category(self):
+        with patch(
+            "helping_hands.lib.meta.tools.registry.category_name_for_tool",
+            return_value="execution",
+        ):
+            err = _BasicIterativeHand._tool_disabled_error("shell_exec")
+            assert isinstance(err, ValueError)
+            assert "disabled" in str(err)
+            assert "--tools execution" in str(err)
+
+    def test_unknown_tool_says_unsupported(self):
+        with patch(
+            "helping_hands.lib.meta.tools.registry.category_name_for_tool",
+            return_value=None,
+        ):
+            err = _BasicIterativeHand._tool_disabled_error("nonexistent_tool")
+            assert isinstance(err, ValueError)
+            assert "unsupported tool" in str(err)

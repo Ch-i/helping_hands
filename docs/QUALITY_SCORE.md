@@ -56,6 +56,7 @@ Target Python: 3.12+
 | `lib/meta/tools/command.py` | Good (execution paths) | 90%+ | `CommandResult`, `_normalize_args`, `_resolve_cwd` added in v5 |
 | `lib/hands/v1/hand/model_provider.py` | Good (resolution) | 90%+ | `_infer_provider_name`, `HandModel` added in v5 |
 | `lib/ai_providers/` | Good (init, normalize, complete) | 85%+ | Provider-specific edge cases next |
+| `lib/hands/v1/hand/base.py` | Good (finalization, auth, precommit, PR body) | 85%+ | `_default_base_branch`, `_build_generic_pr_body` added in v8 |
 | `lib/hands/v1/hand/cli/` | Good (dedicated test files per backend) | 80%+ | Claude/Codex/Gemini/OpenCode/Goose helpers well-tested; subprocess paths harder |
 | `lib/github.py` | Excellent (13 test classes) | Maintained | No gaps identified |
 | `server/app.py` | Good (5 test classes) | 85%+ | Additional endpoint edge cases next |
@@ -67,3 +68,5 @@ Target Python: 3.12+
 - [ ] Add mutation testing for critical path safety (filesystem tools)
 - [ ] Increase coverage for CLI hand subprocess wrappers
 - [ ] Add load testing for app mode concurrent task handling
+- [ ] Add tests for `_build_tree_snapshot` / `_build_bootstrap_context` (iterative.py)
+- [ ] Add tests for `_read_bootstrap_doc` / `_apply_inline_edits` (iterative.py, needs tmp_path)
