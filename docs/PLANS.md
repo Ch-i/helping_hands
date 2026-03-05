@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v11](exec-plans/completed/docs-and-testing-v11.md) —
+  Provider `_build_inner()` tests (LiteLLM, Google, Anthropic — ImportError + env var paths), `_check_redbeat`/`_check_croniter` tests, ScheduleManager unit tests with mocked Redis (CRUD, enable/disable, record_run); QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v10](exec-plans/completed/docs-and-testing-v10.md) —
   Ollama provider tests, E2E hand static method tests, celery_app helper tests (_github_clone_url, _redact_sensitive, _repo_tmp_dir, _trim_updates, _append_update, _UpdateCollector); QUALITY_SCORE.md updates (completed 2026-03-05)
 

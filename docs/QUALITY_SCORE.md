@@ -55,7 +55,7 @@ Target Python: 3.12+
 | `lib/meta/tools/filesystem.py` | Excellent (25+ tests, security) | Maintained | Edge cases added in v5 |
 | `lib/meta/tools/command.py` | Good (execution paths) | 90%+ | `CommandResult`, `_normalize_args`, `_resolve_cwd` added in v5 |
 | `lib/hands/v1/hand/model_provider.py` | Good (resolution) | 90%+ | `_infer_provider_name`, `HandModel` added in v5 |
-| `lib/ai_providers/` | Good (init, normalize, complete) | 85%+ | Provider-specific edge cases next |
+| `lib/ai_providers/` | Good (init, normalize, complete, _build_inner) | 85%+ | `_build_inner` ImportError + env var paths added in v11 |
 | `lib/hands/v1/hand/base.py` | Good (finalization, auth, precommit, PR body) | 85%+ | `_default_base_branch`, `_build_generic_pr_body` added in v8 |
 | `lib/hands/v1/hand/cli/` | Good (dedicated test files per backend) | 80%+ | Claude/Codex/Gemini/OpenCode/Goose helpers well-tested; subprocess paths harder |
 | `lib/github.py` | Excellent (13 test classes) | Maintained | No gaps identified |
@@ -64,6 +64,7 @@ Target Python: 3.12+
 | `lib/ai_providers/ollama.py` | Good (env vars, ImportError, kwargs) | 85%+ | `_build_inner`, `_complete_impl` added in v10 |
 | `lib/hands/v1/hand/e2e.py` | Good (static methods fully tested) | 80%+ | `_safe_repo_dir`, `_work_base`, `_configured_base_branch`, `_build_e2e_pr_comment`, `_build_e2e_pr_body` added in v10 |
 | `server/celery_app.py` | Good (URL helpers, redaction, updates) | 70%+ | `_github_clone_url`, `_redact_sensitive`, `_repo_tmp_dir`, `_trim_updates`, `_append_update`, `_UpdateCollector` added in v10 |
+| `server/schedules.py` | Good (ScheduledTask, cron validation, ScheduleManager CRUD) | 80%+ | `_check_redbeat`, `_check_croniter`, ScheduleManager with mocked Redis added in v11 |
 | `server/mcp_server.py` | Good (10 test classes) | 85%+ | Tool error paths next |
 
 ## Areas for improvement
