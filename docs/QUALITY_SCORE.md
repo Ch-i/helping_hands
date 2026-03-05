@@ -61,6 +61,9 @@ Target Python: 3.12+
 | `lib/github.py` | Excellent (13 test classes) | Maintained | No gaps identified |
 | `server/app.py` | Good (5 test classes) | 85%+ | Additional endpoint edge cases next |
 | `lib/hands/v1/hand/iterative.py` | Good (bootstrap, tree, inline edits, parsers) | 80%+ | `_build_tree_snapshot`, `_read_bootstrap_doc`, `_build_bootstrap_context`, `_apply_inline_edits` added in v9 |
+| `lib/ai_providers/ollama.py` | Good (env vars, ImportError, kwargs) | 85%+ | `_build_inner`, `_complete_impl` added in v10 |
+| `lib/hands/v1/hand/e2e.py` | Good (static methods fully tested) | 80%+ | `_safe_repo_dir`, `_work_base`, `_configured_base_branch`, `_build_e2e_pr_comment`, `_build_e2e_pr_body` added in v10 |
+| `server/celery_app.py` | Good (URL helpers, redaction, updates) | 70%+ | `_github_clone_url`, `_redact_sensitive`, `_repo_tmp_dir`, `_trim_updates`, `_append_update`, `_UpdateCollector` added in v10 |
 | `server/mcp_server.py` | Good (10 test classes) | 85%+ | Tool error paths next |
 
 ## Areas for improvement

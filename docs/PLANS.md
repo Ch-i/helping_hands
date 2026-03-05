@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v10](exec-plans/completed/docs-and-testing-v10.md) —
+  Ollama provider tests, E2E hand static method tests, celery_app helper tests (_github_clone_url, _redact_sensitive, _repo_tmp_dir, _trim_updates, _append_update, _UpdateCollector); QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v9](exec-plans/completed/docs-and-testing-v9.md) —
   Bootstrap and inline edit tests (_build_tree_snapshot, _read_bootstrap_doc, _build_bootstrap_context, _apply_inline_edits); QUALITY_SCORE.md updates (completed 2026-03-05)
 
