@@ -67,6 +67,8 @@ Target Python: 3.12+
 | `server/schedules.py` | Good (ScheduledTask, cron validation, ScheduleManager CRUD) | 80%+ | `_check_redbeat`, `_check_croniter`, ScheduleManager with mocked Redis added in v11 |
 | `lib/meta/tools/registry.py` (runners) | Good (runner payload validation + mocked dispatch) | 85%+ | `_run_python_code`, `_run_python_script`, `_run_bash_script`, `_run_web_search`, `_run_web_browse` added in v12 |
 | `server/mcp_server.py` | Good (12 test classes) | 85%+ | `_repo_root`, `_command_result_to_dict`, error paths (IsADirectory, Unicode, path traversal) added in v12; fixed UnicodeError handler ordering |
+| `server/app.py` (helpers) | Good (12 test classes) | 85%+ | `_parse_backend`, `_task_state_priority`, `_normalize_task_status`, `_extract_task_id/name/kwargs`, `_coerce_optional_str`, `_parse_task_kwargs_str`, `_is_helping_hands_task`, `_upsert_current_task`, `_flower_timeout_seconds`, `_flower_api_base_url` added in v13 |
+| `lib/hands/v1/hand/cli/base.py` (CI/PR) | Good (6 test classes) | 80%+ | `_build_ci_fix_prompt`, `_format_ci_fix_message`, `_format_pr_status_message`, `_looks_like_edit_request` added in v13 |
 
 ## Areas for improvement
 

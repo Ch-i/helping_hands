@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v13](exec-plans/completed/docs-and-testing-v13.md) —
+  App.py pure helper tests (_parse_backend, _task_state_priority, _normalize_task_status, _extract_task_id/name/kwargs, _coerce_optional_str, _parse_task_kwargs_str, _is_helping_hands_task, _upsert_current_task, _flower_timeout_seconds, _flower_api_base_url); CLI base.py CI/PR helper tests (_build_ci_fix_prompt, _format_ci_fix_message, _format_pr_status_message, _looks_like_edit_request); QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v12](exec-plans/completed/docs-and-testing-v12.md) —
   Registry runner wrapper tests (payload validation + mocked dispatch for all 5 runners), MCP server error path tests (_repo_root, _command_result_to_dict, read_file IsADirectory/Unicode/path-traversal, write_file path-traversal); fixed UnicodeError handler ordering bug in mcp_server.py; QUALITY_SCORE.md updates (completed 2026-03-05)
 
