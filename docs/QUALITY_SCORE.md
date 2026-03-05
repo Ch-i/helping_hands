@@ -89,6 +89,8 @@ Target Python: 3.12+
 | `lib/hands/v1/hand/cli/goose.py` | Good (91% -> 95%+) | 90%+ | `_describe_auth` (all providers, key set/not set), `_normalize_base_command` (bare goose/goose run/goose run --instructions/passthrough), `_pr_description_cmd` (anthropic with/without claude, non-anthropic), `_has_goose_builtin_flag`, `_apply_backend_defaults`, `_resolve_ollama_host` added in v23 |
 | `lib/hands/v1/hand/cli/base.py` (CI fix loop) | Good (78% -> 80%+) | 80%+ | `_ci_fix_loop` (all early-return paths, success/no_checks/pending/failure conclusions, fix-with-changes-then-success, no-changes-exhausted, interrupt before/after poll, exception error status), `_poll_ci_checks` (immediate return, poll-until-deadline), `run()` (collect+finalize, CI fix triggered, CI fix skipped when no PR), `stream()` (chunk yielding, PR status message, CI fix integration) added in v24 |
 | `lib/meta/tools/web.py` | Excellent (85% -> 98%+) | Maintained | `_extract_related_topics` (text+url extraction, recursive Topics, non-dict/missing/empty skips), `_require_http_url` (whitespace-only, no-scheme), `_strip_html` (noscript, blank line collapsing), `search_web` (invalid params, unexpected format, dedup, empty URLs, max_results cap), `browse_url` (invalid params, non-HTML content, HTML-by-body-detection) added in v24 |
+| `lib/hands/v1/hand/cli/gemini.py` | Excellent (98%) | Maintained | `_describe_auth` (key set/not set/empty), `_pr_description_cmd` (gemini found/not found), `_command_not_found_message` added in v25 |
+| `lib/hands/v1/hand/cli/codex.py` | Excellent (92% -> 95%+) | Maintained | `_command_not_found_message`, `_native_cli_auth_env_names`, `_apply_codex_exec_sandbox_defaults` (empty/whitespace env override fallback) added in v25 |
 
 ## Areas for improvement
 

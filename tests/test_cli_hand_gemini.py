@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from helping_hands.lib.config import Config
@@ -249,3 +251,56 @@ class TestBuildSubprocessEnv:
     def test_succeeds_with_api_key(self, gemini_hand) -> None:
         env = gemini_hand._build_subprocess_env()
         assert "GEMINI_API_KEY" in env
+
+
+# ---------------------------------------------------------------------------
+# _describe_auth
+# ---------------------------------------------------------------------------
+
+
+class TestDescribeAuth:
+    def test_key_set(self, gemini_hand) -> None:
+        result = gemini_hand._describe_auth()
+        assert "GEMINI_API_KEY" in result
+        assert "(set)" in result
+
+    def test_key_not_set(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        hand = _make_gemini_hand(tmp_path)
+        result = hand._describe_auth()
+        assert "GEMINI_API_KEY" in result
+        assert "(not set)" in result
+
+    def test_key_empty(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("GEMINI_API_KEY", "  ")
+        hand = _make_gemini_hand(tmp_path)
+        result = hand._describe_auth()
+        assert "(not set)" in result
+
+
+# ---------------------------------------------------------------------------
+# _pr_description_cmd
+# ---------------------------------------------------------------------------
+
+
+class TestPrDescriptionCmd:
+    @patch("shutil.which", return_value="/usr/bin/gemini")
+    def test_returns_cmd_when_found(self, _mock_which, gemini_hand) -> None:
+        result = gemini_hand._pr_description_cmd()
+        assert result == ["gemini", "-p"]
+
+    @patch("shutil.which", return_value=None)
+    def test_returns_none_when_not_found(self, _mock_which, gemini_hand) -> None:
+        assert gemini_hand._pr_description_cmd() is None
+
+
+# ---------------------------------------------------------------------------
+# _command_not_found_message
+# ---------------------------------------------------------------------------
+
+
+class TestCommandNotFoundMessage:
+    def test_includes_command_and_env_var(self, gemini_hand) -> None:
+        msg = gemini_hand._command_not_found_message("gemini")
+        assert "'gemini'" in msg
+        assert "HELPING_HANDS_GEMINI_CLI_CMD" in msg

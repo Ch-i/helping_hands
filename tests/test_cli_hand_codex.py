@@ -193,3 +193,51 @@ class TestApplyBackendDefaults:
         result = codex_hand._apply_backend_defaults(cmd)
         assert "--sandbox" in result
         assert "--skip-git-repo-check" in result
+
+
+# ---------------------------------------------------------------------------
+# _command_not_found_message
+# ---------------------------------------------------------------------------
+
+
+class TestCommandNotFoundMessage:
+    def test_includes_command_and_env_var(self, codex_hand) -> None:
+        msg = codex_hand._command_not_found_message("codex")
+        assert "'codex'" in msg
+        assert "HELPING_HANDS_CODEX_CLI_CMD" in msg
+
+
+# ---------------------------------------------------------------------------
+# _native_cli_auth_env_names
+# ---------------------------------------------------------------------------
+
+
+class TestNativeCliAuthEnvNames:
+    def test_returns_openai_api_key(self, codex_hand) -> None:
+        result = codex_hand._native_cli_auth_env_names()
+        assert result == ("OPENAI_API_KEY",)
+
+
+# ---------------------------------------------------------------------------
+# _apply_codex_exec_sandbox_defaults — empty/whitespace env override
+# ---------------------------------------------------------------------------
+
+
+class TestApplyCodexExecSandboxDefaultsEdge:
+    def test_empty_env_override_falls_back_to_auto(
+        self, codex_hand, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("HELPING_HANDS_CODEX_SANDBOX_MODE", "")
+        cmd = ["codex", "exec", "-p", "fix"]
+        result = codex_hand._apply_codex_exec_sandbox_defaults(cmd)
+        assert "--sandbox" in result
+        assert "workspace-write" in result
+
+    def test_whitespace_env_override_falls_back_to_auto(
+        self, codex_hand, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("HELPING_HANDS_CODEX_SANDBOX_MODE", "   ")
+        cmd = ["codex", "exec", "-p", "fix"]
+        result = codex_hand._apply_codex_exec_sandbox_defaults(cmd)
+        assert "--sandbox" in result
+        assert "workspace-write" in result

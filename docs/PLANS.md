@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v25](exec-plans/completed/docs-and-testing-v25.md) —
+  Gemini CLI hand helper tests (`_describe_auth` key set/not set/empty, `_pr_description_cmd` found/not found, `_command_not_found_message`); Codex CLI hand helper tests (`_command_not_found_message`, `_native_cli_auth_env_names`, `_apply_codex_exec_sandbox_defaults` empty/whitespace env override fallback); QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v24](exec-plans/completed/docs-and-testing-v24.md) —
   CLI base.py CI fix loop tests (`_ci_fix_loop` all early-return paths, success/no_checks/pending/failure conclusions, fix-with-changes, exhausted retries, interrupt, exception error status; `_poll_ci_checks` immediate/deadline paths; `run()` collect+finalize with/without CI fix; `stream()` chunk yielding and PR status); web.py helper edge case tests (`_extract_related_topics` recursive/skip paths, `_require_http_url` extra validation, `_strip_html` noscript/blank-lines, `search_web` dedup/validation/format, `browse_url` non-HTML/validation); QUALITY_SCORE.md updates (completed 2026-03-05)
 
