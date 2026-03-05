@@ -78,3 +78,22 @@ class TestMetaSkills:
 
     def test_format_skill_catalog_instructions_empty(self) -> None:
         assert meta_skills.format_skill_catalog_instructions((), None) == ""
+
+    def test_normalize_skill_selection_non_string_item_raises(self) -> None:
+        """A list containing a non-string item should raise ValueError."""
+        with pytest.raises(ValueError, match="skills must contain only strings"):
+            meta_skills.normalize_skill_selection([123])  # type: ignore[list-item]
+
+    def test_stage_skill_catalog_skips_missing_md_file(self) -> None:
+        """If a SkillSpec references a name with no .md file, it is silently skipped."""
+        fake_skill = meta_skills.SkillSpec(
+            name="nonexistent-skill",
+            title="Does Not Exist",
+            content="placeholder",
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir) / "skills"
+            meta_skills.stage_skill_catalog((fake_skill,), target)
+            assert target.is_dir()
+            # No file should have been copied for the nonexistent skill.
+            assert not (target / "nonexistent-skill.md").exists()

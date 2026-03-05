@@ -114,3 +114,26 @@ class TestConfigDefaults:
         finally:
             if "HELPING_HANDS_MODEL" in os.environ:
                 del os.environ["HELPING_HANDS_MODEL"]
+
+
+class TestLoadEnvFilesNoDotenv:
+    def test_returns_early_when_load_dotenv_is_none(
+        self,
+        monkeypatch: object,
+    ) -> None:
+        """When python-dotenv is not installed, _load_env_files exits early."""
+        monkeypatch.setattr(config_module, "load_dotenv", None)
+        # Should not raise; just returns immediately.
+        config_module._load_env_files(repo="/some/path")
+
+
+class TestBoolToolAndSkillOverrides:
+    def test_bool_tools_override_normalizes_to_empty_tuple(self) -> None:
+        """If overrides pass enabled_tools=True (a bool), it normalizes to ()."""
+        config = Config.from_env(overrides={"enabled_tools": True})
+        assert config.enabled_tools == ()
+
+    def test_bool_skills_override_normalizes_to_empty_tuple(self) -> None:
+        """If overrides pass enabled_skills=True (a bool), it normalizes to ()."""
+        config = Config.from_env(overrides={"enabled_skills": True})
+        assert config.enabled_skills == ()

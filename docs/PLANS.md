@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v30](exec-plans/completed/docs-and-testing-v30.md) —
+  Config edge case tests (`_load_env_files` no-dotenv early return, bool tool/skill override normalization to empty tuple); skills edge case tests (`normalize_skill_selection` non-string ValueError, `stage_skill_catalog` missing .md skip); ARCHITECTURE.md + DESIGN.md updated with DockerSandboxClaudeCodeHand; config.py 89%+, skills 94% -> 96%; QUALITY_SCORE.md updates (completed 2026-03-05)
+
 - [Docs and Testing v29](exec-plans/completed/docs-and-testing-v29.md) —
   CLI base.py skill catalog + container + task prompt branch tests (19 tests: `_stage_skill_catalog` staging/no-op, `_cleanup_skill_catalog` remove/no-op, `_wrap_container_if_enabled` disabled/docker-not-found/env-forwarding/mount, `_build_task_prompt` tool/skill sections include/omit); Hand base.py early return tests (`_run_git_read` success/failure, `_finalize_repo_pr` no_repo/not_git_repo/no_changes/disabled/no_github_origin); cli/base.py 91% -> 92%, base.py 92% -> 95%; QUALITY_SCORE.md updates (completed 2026-03-05)
 

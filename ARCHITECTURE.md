@@ -77,6 +77,7 @@ All hands extend `Hand` base class (`base.py`) and implement `run()`/`stream()`:
 | `GooseCLIHand` | `cli/goose.py` | CLI subprocess | Wraps `goose run` |
 | `GeminiCLIHand` | `cli/gemini.py` | CLI subprocess | Wraps `gemini -p` |
 | `OpenCodeCLIHand` | `cli/opencode.py` | CLI subprocess | Wraps `opencode run` |
+| `DockerSandboxClaudeCodeHand` | `cli/docker_sandbox_claude.py` | CLI subprocess | Wraps `claude` inside Docker sandbox microVM |
 
 ### 4. Model resolution
 
@@ -234,6 +235,10 @@ IDE sends MCP tool call (e.g., "build_repo")
 | MCP server | `src/helping_hands/server/mcp_server.py` |
 | Schedules | `src/helping_hands/server/schedules.py` |
 | Task result helper | `src/helping_hands/server/task_result.py` |
+
+---
+
+| Docker sandbox hand | `src/helping_hands/lib/hands/v1/hand/cli/docker_sandbox_claude.py` |
 
 ---
 

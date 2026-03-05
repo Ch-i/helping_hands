@@ -50,7 +50,7 @@ Target Python: 3.12+
 
 | Module | Current state | Target | Notes |
 |---|---|---|---|
-| `lib/config.py` | Good (env loading, overrides, dotenv) | 90%+ | Normalization edge cases added in v5 |
+| `lib/config.py` | Good (env loading, overrides, dotenv) | 90%+ | Normalization edge cases added in v5; `_load_env_files` no-dotenv early return, bool tool/skill override normalization added in v30 |
 | `lib/repo.py` | Excellent (12 tests, all paths) | Maintained | No gaps identified |
 | `lib/meta/tools/filesystem.py` | Excellent (25+ tests, security) | Maintained | Edge cases added in v5 |
 | `lib/meta/tools/command.py` | Good (execution paths) | 90%+ | `CommandResult`, `_normalize_args`, `_resolve_cwd` added in v5 |
@@ -93,6 +93,7 @@ Target Python: 3.12+
 | `lib/hands/v1/hand/cli/codex.py` | Excellent (92% -> 95%+) | Maintained | `_command_not_found_message`, `_native_cli_auth_env_names`, `_apply_codex_exec_sandbox_defaults` (empty/whitespace env override fallback) added in v25 |
 | `lib/hands/v1/hand/cli/opencode.py` | Excellent (91% -> 94%) | Maintained | `_build_failure_message` delegation, `_build_opencode_failure_message` additional auth token variations (case-insensitive, non-auth distinction, exit code) added in v26 |
 | `lib/hands/v1/hand/cli/docker_sandbox_claude.py` | Good (19% -> 91%) | 85%+ | Class attrs, `_resolve_sandbox_name` (env override/auto-gen/cache/sanitize), `_should_cleanup` (truthy/falsy), `_wrap_sandbox_exec` (wrapping/env forwarding), `_execution_mode`, `_build_failure_message` (auth/generic/sandbox note), `_command_not_found_message`, `_fallback_command_when_not_found`, `_docker_sandbox_available` (success/fail/FileNotFoundError), `_ensure_sandbox` (skip/docker-not-found/plugin-unavailable/success/failure/template), `_remove_sandbox` (skip/stop+rm) added in v27 |
+| `lib/meta/skills/__init__.py` | Good (94% -> 96%) | 95%+ | `normalize_skill_selection` non-string ValueError, `stage_skill_catalog` missing .md skip added in v30 |
 
 ## Areas for improvement
 

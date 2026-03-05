@@ -74,6 +74,13 @@ Each backend customizes the shared `_TwoPhaseCLIHand` base through hook methods:
 - **OpenCode** (`opencode.py`): Preserves `provider/model` format for model
   resolution (no provider inference needed). Minimal hook surface.
 
+- **Docker Sandbox Claude** (`docker_sandbox_claude.py`): Extends `ClaudeCodeHand`
+  to run inside a Docker Desktop microVM sandbox (`docker sandbox create` /
+  `docker sandbox exec`).  The workspace directory is synced at the same absolute
+  path.  Sandbox names are auto-generated and cached per instance.  Cleanup is
+  controlled by `HELPING_HANDS_DOCKER_SANDBOX_CLEANUP` (default: auto-remove).
+  Requires Docker Desktop with the `docker sandbox` CLI plugin.
+
 ### Finalization
 
 Commit/push/PR logic is centralized in the `Hand` base class so all backends
