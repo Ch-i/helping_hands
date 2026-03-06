@@ -15,6 +15,7 @@ Index of design documents for helping_hands.
 - [Repo Indexing](repo-indexing.md) — Repository ingestion, tree walking, and RepoIndex design
 - [Scheduling System](scheduling-system.md) — RedBeat, ScheduleManager CRUD, cron presets, trigger-now
 - [Deployment Modes](deployment-modes.md) — CLI vs Server vs MCP runtime modes
+- [CI Pipeline](ci-pipeline.md) — GitHub Actions workflows, matrix strategy, coverage, and docs deployment
 
 ## Adding a design doc
 

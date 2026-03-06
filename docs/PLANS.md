@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v70](exec-plans/completed/docs-and-testing-v70.md) --
+  CI pipeline design doc; docs structure validation tests (4 new); 1587 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v69](exec-plans/completed/docs-and-testing-v69.md) --
   Consolidate v63-v68 into 2026-03-06.md; deployment-modes design doc; mock_github_client fixture self-tests (11 new); Hand instantiation smoke tests (27 new); 1583 tests pass (completed 2026-03-06)
 
