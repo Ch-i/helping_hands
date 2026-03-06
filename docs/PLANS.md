@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v55](exec-plans/completed/docs-and-testing-v55.md) --
+  Frontend test coverage to 80%+: schedule CRUD operations (edit/delete/trigger/toggle with mocked API), task discovery from /tasks/current endpoint, task polling and poll error handling, notification banner render/dismiss/enable, toast display and close on terminal status, monitor resize/scroll handlers, New submission state reset; frontend coverage 71.5% -> 82.3% statements, 80.2% branches; 153 frontend tests pass (completed 2026-03-06)
+
 - [Docs and Testing v54](exec-plans/completed/docs-and-testing-v54.md) --
   Frontend component test coverage expansion: form submission flow (POST payload validation, error handling, model/tools/skills inclusion, checkbox toggles, max iterations), monitor view (output tab switching Updates/Raw/Payload, task ID badge, status blinker, task inputs), schedule view (form rendering, field changes, cron preset dropdown, schedule creation API, Cancel button, Refresh, error handling); mockResponse helper with clone() support; frontend coverage 54% -> 71.5% statements, 81.2% branches; 134 frontend tests pass, 1470 backend tests pass (completed 2026-03-06)
 

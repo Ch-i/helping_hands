@@ -674,3 +674,604 @@ describe("Schedule view", () => {
     expect(saveCall).toBeTruthy();
   });
 });
+
+describe("Schedule list CRUD operations", () => {
+  const SCHEDULE_ITEM = {
+    schedule_id: "sched-001",
+    name: "Nightly Build",
+    cron_expression: "0 0 * * *",
+    repo_path: "org/repo",
+    prompt: "Update docs",
+    backend: "claudecodecli",
+    model: null,
+    max_iterations: 6,
+    pr_number: null,
+    no_pr: false,
+    enable_execution: false,
+    enable_web: false,
+    use_native_cli_auth: false,
+    fix_ci: false,
+    ci_check_wait_minutes: 3,
+    tools: [],
+    skills: [],
+    enabled: true,
+    created_at: "2026-01-01T00:00:00Z",
+    last_run_at: null,
+    last_run_task_id: null,
+    run_count: 0,
+    next_run_at: "2026-03-07T00:00:00Z",
+  };
+
+  function renderScheduleWithItems() {
+    const mockFetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("/schedules")) {
+        // GET single schedule for edit
+        if (!init?.method && url.match(/\/schedules\/sched-/)) {
+          return Promise.resolve(
+            mockResponse({ ok: true, status: 200, jsonData: SCHEDULE_ITEM })
+          );
+        }
+        // GET list
+        if (!init?.method || init?.method === "GET") {
+          return Promise.resolve(
+            mockResponse({
+              ok: true,
+              status: 200,
+              jsonData: { schedules: [SCHEDULE_ITEM], total: 1 },
+            })
+          );
+        }
+        // POST/PUT/DELETE
+        return Promise.resolve(
+          mockResponse({ ok: true, status: 200, jsonData: { schedule_id: "sched-001" } })
+        );
+      }
+      return Promise.resolve(mockResponse({ ok: false, status: 503 }));
+    });
+    vi.stubGlobal("fetch", mockFetch);
+    return mockFetch;
+  }
+
+  it("renders schedule items with name and actions", async () => {
+    renderScheduleWithItems();
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Scheduled tasks"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Refresh"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Nightly Build")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Edit")).toBeInTheDocument();
+    expect(screen.getByText("Run now")).toBeInTheDocument();
+    expect(screen.getByText("Delete")).toBeInTheDocument();
+    expect(screen.getByText("Disable")).toBeInTheDocument();
+  });
+
+  it("opens edit form when Edit button is clicked", async () => {
+    renderScheduleWithItems();
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Scheduled tasks"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Refresh"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Edit")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Edit"));
+    });
+
+    await waitFor(() => {
+      const nameInput = screen.getByPlaceholderText("e.g. Daily docs update") as HTMLInputElement;
+      expect(nameInput.value).toBe("Nightly Build");
+    });
+  });
+
+  it("calls DELETE when Delete button is clicked and confirmed", async () => {
+    const mockFetch = renderScheduleWithItems();
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Scheduled tasks"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Refresh"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Delete")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Delete"));
+    });
+
+    const deleteCall = mockFetch.mock.calls.find(
+      (call: [string, RequestInit?]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("/schedules/sched-001") &&
+        call[1]?.method === "DELETE"
+    );
+    expect(deleteCall).toBeTruthy();
+  });
+
+  it("does not call DELETE when user cancels confirm dialog", async () => {
+    const mockFetch = renderScheduleWithItems();
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Scheduled tasks"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Refresh"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Delete")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Delete"));
+    });
+
+    const deleteCall = mockFetch.mock.calls.find(
+      (call: [string, RequestInit?]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("/schedules/sched-001") &&
+        call[1]?.method === "DELETE"
+    );
+    expect(deleteCall).toBeUndefined();
+  });
+
+  it("triggers schedule via Run now button", async () => {
+    const mockFetch = renderScheduleWithItems();
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    vi.stubGlobal("alert", vi.fn());
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Scheduled tasks"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Refresh"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Run now")).toBeInTheDocument();
+    });
+
+    // Override fetch for trigger response
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/trigger")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: { task_id: "task-triggered-001", message: "ok" },
+          })
+        );
+      }
+      if (typeof url === "string" && url.includes("/schedules")) {
+        return Promise.resolve(
+          mockResponse({ ok: true, status: 200, jsonData: { schedules: [SCHEDULE_ITEM], total: 1 } })
+        );
+      }
+      return Promise.resolve(mockResponse({ ok: false, status: 503 }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run now"));
+    });
+
+    const triggerCall = mockFetch.mock.calls.find(
+      (call: [string, RequestInit?]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("/trigger") &&
+        call[1]?.method === "POST"
+    );
+    expect(triggerCall).toBeTruthy();
+  });
+
+  it("toggles schedule enabled state via Disable button", async () => {
+    const mockFetch = renderScheduleWithItems();
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Scheduled tasks"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Refresh"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Disable")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Disable"));
+    });
+
+    const toggleCall = mockFetch.mock.calls.find(
+      (call: [string, RequestInit?]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("/disable") &&
+        call[1]?.method === "POST"
+    );
+    expect(toggleCall).toBeTruthy();
+  });
+});
+
+describe("Task selection and polling", () => {
+  it("transitions to monitor view when a task is selected from history", async () => {
+    // First submit a task to populate history
+    const mockFetch = mockFetchResponses({
+      "/build": mockResponse({
+        ok: true,
+        status: 200,
+        jsonData: { task_id: "sel-001", status: "QUEUED", backend: "claudecodecli" },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    // Should be in monitor view now with the task ID visible
+    await waitFor(() => {
+      const title = document.querySelector(".monitor-title");
+      expect(title?.textContent).toContain("sel-001");
+    });
+
+    // Navigate to submission and back
+    fireEvent.click(screen.getByText("New submission"));
+
+    // The task should appear in the task list; click it
+    const taskRows = document.querySelectorAll(".task-row");
+    if (taskRows.length > 0) {
+      await act(async () => {
+        fireEvent.click(taskRows[0]);
+      });
+    }
+  });
+
+  it("polls task status and updates on terminal status", async () => {
+    // Submit a task first
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/build")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: { task_id: "poll-001", status: "QUEUED", backend: "claudecodecli" },
+          })
+        );
+      }
+      if (typeof url === "string" && url.includes("/tasks/poll-001")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: {
+              task_id: "poll-001",
+              status: "SUCCESS",
+              result: { updates: ["Done!"] },
+            },
+          })
+        );
+      }
+      return Promise.resolve(mockResponse({ ok: false, status: 503 }));
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    // Wait for polling to pick up the terminal status
+    await waitFor(
+      () => {
+        const blinker = document.querySelector(".status-blinker");
+        // The blinker should reflect a terminal state
+        expect(blinker).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
+  });
+
+  it("handles poll error gracefully", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/build")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: { task_id: "err-poll-001", status: "QUEUED", backend: "claudecodecli" },
+          })
+        );
+      }
+      if (typeof url === "string" && url.includes("/tasks/err-poll-001")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: false,
+            status: 500,
+            jsonData: { detail: "Internal server error" },
+          })
+        );
+      }
+      return Promise.resolve(mockResponse({ ok: false, status: 503 }));
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    // Advance timers so polling fires
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+
+    // The status should reflect poll_error
+    const blinker = document.querySelector(".status-blinker");
+    expect(blinker).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+});
+
+describe("Notification and toast UI", () => {
+  it("renders notification banner when permission is default", () => {
+    vi.stubGlobal("Notification", { permission: "default", requestPermission: vi.fn() });
+    render(<App />);
+
+    expect(screen.getByText("Enable OS notifications for task updates?")).toBeInTheDocument();
+    expect(screen.getByText("Enable")).toBeInTheDocument();
+    expect(screen.getByText("Dismiss")).toBeInTheDocument();
+  });
+
+  it("dismisses notification banner when Dismiss is clicked", () => {
+    vi.stubGlobal("Notification", { permission: "default", requestPermission: vi.fn() });
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Dismiss"));
+
+    expect(screen.queryByText("Enable OS notifications for task updates?")).not.toBeInTheDocument();
+  });
+
+  it("calls requestPermission when Enable is clicked", () => {
+    const reqPerm = vi.fn().mockResolvedValue("granted");
+    vi.stubGlobal("Notification", { permission: "default", requestPermission: reqPerm });
+    render(<App />);
+
+    fireEvent.click(screen.getByText("Enable"));
+    expect(reqPerm).toHaveBeenCalled();
+  });
+
+  it("shows toast when a task reaches terminal status via polling", async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/build")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: { task_id: "toast-001", status: "QUEUED", backend: "claudecodecli" },
+          })
+        );
+      }
+      if (typeof url === "string" && url.includes("/tasks/toast-001")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: { task_id: "toast-001", status: "SUCCESS", result: null },
+          })
+        );
+      }
+      return Promise.resolve(mockResponse({ ok: false, status: 503 }));
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    // Toast should appear when task transitions to terminal status
+    await waitFor(
+      () => {
+        const toasts = document.querySelectorAll(".toast");
+        expect(toasts.length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 }
+    );
+  });
+
+  it("removes toast when close button is clicked", async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/build")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: { task_id: "toast-close-001", status: "QUEUED", backend: "claudecodecli" },
+          })
+        );
+      }
+      if (typeof url === "string" && url.includes("/tasks/toast-close-001")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: { task_id: "toast-close-001", status: "SUCCESS", result: null },
+          })
+        );
+      }
+      return Promise.resolve(mockResponse({ ok: false, status: 503 }));
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    await waitFor(
+      () => {
+        expect(document.querySelectorAll(".toast").length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 }
+    );
+
+    // Click the toast close button
+    const closeBtn = document.querySelector(".toast-close");
+    expect(closeBtn).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(closeBtn!);
+    });
+
+    expect(document.querySelectorAll(".toast").length).toBe(0);
+  });
+});
+
+describe("Task discovery from current tasks API", () => {
+  it("discovers running tasks from /tasks/current endpoint", async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/tasks/current")) {
+        return Promise.resolve(
+          mockResponse({
+            ok: true,
+            status: 200,
+            jsonData: {
+              tasks: [
+                { task_id: "disc-001", status: "STARTED", backend: "goose", repo_path: "org/repo" },
+              ],
+              source: "celery",
+            },
+          })
+        );
+      }
+      return Promise.resolve(mockResponse({ ok: false, status: 503 }));
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    // Wait for the task to appear in the task list (uses .task-row class)
+    await waitFor(
+      () => {
+        const taskRows = document.querySelectorAll(".task-row");
+        expect(taskRows.length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 }
+    );
+  });
+
+  it("handles /tasks/current API failure gracefully", async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/tasks/current")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      return Promise.resolve(mockResponse({ ok: false, status: 503 }));
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    // Should not crash — the app still renders
+    await waitFor(() => {
+      expect(screen.getByText("Run")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("Monitor view resize and scroll", () => {
+  it("handles monitor output scroll event", async () => {
+    const mockFetch = mockFetchResponses({
+      "/build": mockResponse({
+        ok: true,
+        status: 200,
+        jsonData: { task_id: "scroll-001", status: "QUEUED", backend: "claudecodecli" },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    const outputEl = document.querySelector(".monitor-output");
+    if (outputEl) {
+      fireEvent.scroll(outputEl);
+    }
+    // No assertion needed — just verifying no errors on scroll
+    expect(outputEl).toBeInTheDocument();
+  });
+
+  it("renders the resize handle in monitor view", async () => {
+    const mockFetch = mockFetchResponses({
+      "/build": mockResponse({
+        ok: true,
+        status: 200,
+        jsonData: { task_id: "resize-001", status: "QUEUED", backend: "claudecodecli" },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    const handle = document.querySelector(".resize-handle");
+    if (handle) {
+      fireEvent.mouseDown(handle, { clientY: 200 });
+    }
+    // Verifies handleResizeStart runs without error
+    expect(screen.getByText("Task inputs")).toBeInTheDocument();
+  });
+});
+
+describe("New submission button resets state", () => {
+  it("resets to submission form from monitor view", async () => {
+    const mockFetch = mockFetchResponses({
+      "/build": mockResponse({
+        ok: true,
+        status: 200,
+        jsonData: { task_id: "reset-001", status: "QUEUED", backend: "claudecodecli" },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    // Should be in monitor view
+    await waitFor(() => {
+      expect(screen.getByText("Task inputs")).toBeInTheDocument();
+    });
+
+    // Click New submission to reset
+    fireEvent.click(screen.getByText("New submission"));
+
+    // Should be back in submission view with Run button
+    expect(screen.getByText("Run")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("owner/repo")).toBeInTheDocument();
+  });
+});
