@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v50](exec-plans/completed/docs-and-testing-v50.md) --
+  Frontend test coverage expansion: export and test 11 pure utility functions (providerFromBackend, formatProviderName, repoName, cronFrequency, buildDeskSlots, checkDeskCollision, asRecord, readStringValue, readBoolishValue, readSkillsValue, backendDisplayName) with 55 new unit tests; add component-level render tests with @testing-library/react (8 tests); install @testing-library/dom peer dependency; 83 frontend tests pass, 1461 backend tests pass (completed 2026-03-06)
+
 - [Docs and Testing v49](exec-plans/completed/docs-and-testing-v49.md) --
   MCP server `main()` stdio/http transport tests (97% -> 98%); CLI base IO loop interrupt break and process-exited-during-timeout break tests; `run()` CI-fix noop-emit callable test; PRODUCT_SENSE.md updated with implemented capabilities (scheduling, MCP, skills); QUALITY_SCORE.md updated; 1461 tests pass (completed 2026-03-06)
 
