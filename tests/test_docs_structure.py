@@ -448,3 +448,160 @@ class TestClaudeMdSections:
         assert "uv run pytest" in claude_text, (
             "CLAUDE.md should contain 'uv run pytest' test command"
         )
+
+
+class TestDesignMdSections:
+    """DESIGN.md must have required structural sections."""
+
+    @pytest.fixture()
+    def design_text(self) -> str:
+        return (DOCS_DIR / "DESIGN.md").read_text()
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "## Guiding principles",
+            "## Patterns",
+            "## Anti-patterns to avoid",
+        ],
+    )
+    def test_required_section_exists(self, design_text: str, section: str) -> None:
+        assert section in design_text, (
+            f"DESIGN.md is missing required section '{section}'"
+        )
+
+
+class TestSecurityMdSections:
+    """SECURITY.md must have required structural sections."""
+
+    @pytest.fixture()
+    def security_text(self) -> str:
+        return (DOCS_DIR / "SECURITY.md").read_text()
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "## Path traversal prevention",
+            "## Token authentication",
+            "## Subprocess execution",
+        ],
+    )
+    def test_required_section_exists(self, security_text: str, section: str) -> None:
+        assert section in security_text, (
+            f"SECURITY.md is missing required section '{section}'"
+        )
+
+
+class TestReliabilityMdSections:
+    """RELIABILITY.md must have required structural sections."""
+
+    @pytest.fixture()
+    def reliability_text(self) -> str:
+        return (DOCS_DIR / "RELIABILITY.md").read_text()
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "## Error handling patterns",
+            "## Heartbeat monitoring",
+            "## Idempotency",
+        ],
+    )
+    def test_required_section_exists(self, reliability_text: str, section: str) -> None:
+        assert section in reliability_text, (
+            f"RELIABILITY.md is missing required section '{section}'"
+        )
+
+
+class TestReadmeMdSections:
+    """README.md must have required structural sections."""
+
+    @pytest.fixture()
+    def readme_text(self) -> str:
+        return (REPO_ROOT / "README.md").read_text()
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "## Quick start",
+            "## Project structure",
+            "## Configuration",
+            "## Development",
+        ],
+    )
+    def test_required_section_exists(self, readme_text: str, section: str) -> None:
+        assert section in readme_text, (
+            f"README.md is missing required section '{section}'"
+        )
+
+
+class TestQualityScoreMdStructure:
+    """QUALITY_SCORE.md must have required sections and tables."""
+
+    @pytest.fixture()
+    def quality_text(self) -> str:
+        return (DOCS_DIR / "QUALITY_SCORE.md").read_text()
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "### CI pipeline",
+            "## Testing conventions",
+            "## Coverage targets",
+        ],
+    )
+    def test_required_section_exists(self, quality_text: str, section: str) -> None:
+        assert section in quality_text, (
+            f"QUALITY_SCORE.md is missing required section '{section}'"
+        )
+
+    def test_ci_pipeline_table_has_entries(self, quality_text: str) -> None:
+        """CI pipeline table should have at least 4 check entries."""
+        in_ci = False
+        rows = 0
+        for line in quality_text.splitlines():
+            if "### CI pipeline" in line:
+                in_ci = True
+                continue
+            if in_ci and line.startswith("##"):
+                break
+            if in_ci and line.startswith("|") and "---" not in line:
+                rows += 1
+        data_rows = rows - 1 if rows > 0 else 0
+        assert data_rows >= 4, (
+            f"QUALITY_SCORE.md CI pipeline table has {data_rows} rows, expected >= 4"
+        )
+
+    def test_per_module_coverage_table_has_entries(self, quality_text: str) -> None:
+        """Per-module coverage table should have at least 10 entries."""
+        in_module = False
+        rows = 0
+        for line in quality_text.splitlines():
+            if "## Per-module coverage targets" in line:
+                in_module = True
+                continue
+            if in_module and line.startswith("##"):
+                break
+            if in_module and line.startswith("|") and "---" not in line:
+                rows += 1
+        data_rows = rows - 1 if rows > 0 else 0
+        assert data_rows >= 10, (
+            f"QUALITY_SCORE.md per-module table has {data_rows} rows, expected >= 10"
+        )
+
+    def test_remaining_gaps_table_has_entries(self, quality_text: str) -> None:
+        """Remaining coverage gaps table should have at least 1 entry."""
+        in_gaps = False
+        rows = 0
+        for line in quality_text.splitlines():
+            if "## Remaining coverage gaps" in line:
+                in_gaps = True
+                continue
+            if in_gaps and line.startswith("##"):
+                break
+            if in_gaps and line.startswith("|") and "---" not in line:
+                rows += 1
+        data_rows = rows - 1 if rows > 0 else 0
+        assert data_rows >= 1, (
+            f"QUALITY_SCORE.md remaining gaps table has {data_rows} rows, expected >= 1"
+        )

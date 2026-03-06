@@ -19,6 +19,7 @@ Index of design documents for helping_hands.
 - [Skills System](skills-system.md) — Catalog discovery, normalization, staging, and prompt injection
 - [GitHub Client](github-client.md) — Authentication, clone/branch/PR lifecycle, and token safety
 - [PR Description](pr-description.md) — Generation flow, prompt engineering, parsing, fallback chain, and env config
+- [Default Prompts](default-prompts.md) — Smoke test prompt structure, directive flow, and CLI/server sharing
 
 ## Adding a design doc
 

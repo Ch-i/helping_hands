@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v74](exec-plans/completed/docs-and-testing-v74.md) --
+  Default-prompts design doc; extended docs structure validation tests (DESIGN.md sections, SECURITY.md sections, RELIABILITY.md sections, README.md sections, QUALITY_SCORE.md structure; 19 new); 1638 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v73](exec-plans/completed/docs-and-testing-v73.md) --
   PR description design doc; extended docs structure validation tests (ARCHITECTURE.md key paths, AGENTS.md sections, docs/index.md link resolution, CLAUDE.md sections; 17 new); 1619 tests pass (completed 2026-03-06)
 
