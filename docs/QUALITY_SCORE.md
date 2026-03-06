@@ -96,6 +96,10 @@ Target Python: 3.12+
 | `lib/meta/skills/__init__.py` | Good (94% -> 96%) | 95%+ | `normalize_skill_selection` non-string ValueError, `stage_skill_catalog` missing .md skip added in v30 |
 | `lib/hands/v1/hand/pr_description.py` | Good (80 tests, all paths) | 90%+ | `_diff_char_limit` negative, `_get_diff` empty stdout on success, `_build_prompt`/`_build_commit_message_prompt` summary truncation, `_parse_output` whitespace-only body, `_commit_message_from_prompt` whitespace edge cases added in v32 |
 | `lib/hands/v1/hand/placeholders.py` | Excellent (100%) | Maintained | Backward-compat shim re-export verification (class symbols, module aliases, `__all__`, identity checks) added in v34 |
+| `lib/hands/v1/hand/__init__.py` | Excellent (100%) | Maintained | Package re-export tests (`__all__` completeness, symbol identity, subprocess alias) added in v37 |
+| `lib/ai_providers/__init__.py` | Excellent (100%) | Maintained | PROVIDERS dict completeness, singleton identity, `__all__` verification added in v37 |
+| `lib/ai_providers/types.py` | Excellent (100%) | Maintained | `normalize_messages` (string/sequence/empty/missing keys), `AIProvider` base (lazy init, complete, acomplete, model override) covered in test_ai_providers.py |
+| `server/task_result.py` | Excellent (100%) | Maintained | All branches of `normalize_task_result` (None/dict/exception/other/bool/list/custom) covered in test_task_result.py |
 
 ## Areas for improvement
 

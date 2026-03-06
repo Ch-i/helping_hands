@@ -1,7 +1,7 @@
 # ARCHITECTURE.md
 
 High-level architecture of helping_hands. For detailed design notes see
-`obsidian/docs/Architecture.md`. For coding conventions see `AGENT.md`.
+`docs/DESIGN.md`. For coding conventions see `AGENT.md`.
 
 ---
 
@@ -239,4 +239,4 @@ IDE sends MCP tool call (e.g., "build_repo")
 
 ---
 
-*Last updated: 2026-03-05*
+*Last updated: 2026-03-06*

@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v37](exec-plans/completed/docs-and-testing-v37.md) --
+  Package-level re-export tests for `hands/v1/hand/__init__.py` (`__all__` completeness, symbol identity, subprocess alias) and `ai_providers/__init__.py` (PROVIDERS dict, singleton identity, `__all__`); fix stale `obsidian/docs` reference in ARCHITECTURE.md; add `task_result.py`, `ai_providers/types.py`, `ai_providers/__init__.py`, `hands/v1/hand/__init__.py` to QUALITY_SCORE.md; 1319 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v36](exec-plans/completed/docs-and-testing-v36.md) --
   GitHub client edge case tests (`fetch_branch` default/custom remote, `pull` with branch, `set_local_identity`, `get_check_runs` mixed conclusion, `upsert_pr_comment` body-already-has-marker/None-body); Hand base.py edge case tests (`_push_to_existing_pr` whoami exception, `_finalize_repo_pr` precommit-no-changes-after-fix, `_finalize_repo_pr` get_repo default_branch exception fallback); DESIGN.md updated with GitHub client patterns and finalization resilience; 1290 tests pass (completed 2026-03-06)
 
