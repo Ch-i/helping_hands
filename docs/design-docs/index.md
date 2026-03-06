@@ -10,6 +10,7 @@ Index of design documents for helping_hands.
 - [Provider Abstraction](provider-abstraction.md) — AI provider interface, model resolution, and backend adapters
 - [Testing Methodology](testing-methodology.md) — Coverage-guided iteration, test patterns, and dead code documentation
 - [Error Handling](error-handling.md) — Recovery patterns, fallback chains, and narrow failure boundaries
+- [MCP Architecture](mcp-architecture.md) — Tool registration, transport selection, and repo isolation
 
 ## Adding a design doc
 

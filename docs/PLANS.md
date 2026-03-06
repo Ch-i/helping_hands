@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v65](exec-plans/completed/docs-and-testing-v65.md) --
+  Web dataclass construction and _decode_bytes edge case tests (19 tests); MCP architecture design doc; updated testing methodology stats; 1514 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v64](exec-plans/completed/docs-and-testing-v64.md) --
   Refactor test_cli_hand_goose.py to shared `make_cli_hand` fixture; add conftest fixture self-tests (10 tests); update AGENTS.md with Docker Sandbox and scheduled agents; add error-handling design doc; 1495 tests pass (completed 2026-03-06)
 
