@@ -81,7 +81,8 @@ class TestHandInstantiation:
     @pytest.mark.skipif(
         not _langgraph_available, reason="langgraph extras not installed"
     )
-    def test_basic_langgraph_hand(self, _hand_deps) -> None:
+    def test_basic_langgraph_hand(self, _hand_deps, monkeypatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake-key")
         config, ri = _hand_deps
         hand = BasicLangGraphHand(config=config, repo_index=ri)
         assert isinstance(hand, Hand)
@@ -89,7 +90,8 @@ class TestHandInstantiation:
     @pytest.mark.skipif(
         not _atomic_available, reason="atomic_agents extras not installed"
     )
-    def test_basic_atomic_hand(self, _hand_deps) -> None:
+    def test_basic_atomic_hand(self, _hand_deps, monkeypatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake-key")
         config, ri = _hand_deps
         hand = BasicAtomicHand(config=config, repo_index=ri)
         assert isinstance(hand, Hand)
