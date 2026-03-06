@@ -96,3 +96,14 @@ class TestToolRegistry:
         assert "Tool category enabled: custom" in result
         # The tool name should NOT appear as a guidance line
         assert "custom.unknown_tool" not in result
+
+    def test_normalize_tool_selection_empty_inner_token_skipped(self) -> None:
+        """Inner comma-split tokens that normalize to empty are skipped
+        (branch 247->245)."""
+        result = tool_registry.normalize_tool_selection("execution,,web")
+        assert result == ("execution", "web")
+
+    def test_normalize_tool_selection_whitespace_inner_token_skipped(self) -> None:
+        """Whitespace-only inner tokens normalize to empty and are skipped."""
+        result = tool_registry.normalize_tool_selection("execution, , ,web")
+        assert result == ("execution", "web")

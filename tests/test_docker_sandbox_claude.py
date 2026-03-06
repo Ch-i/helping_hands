@@ -601,3 +601,111 @@ class TestRunTwoPhase:
         with pytest.raises(RuntimeError, match="boom"):
             asyncio.run(hand._run_two_phase("task", emit=emit))
         assert remove_called == [True]
+
+
+# ---------------------------------------------------------------------------
+# _ensure_sandbox verbose branch (127->130)
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureSandboxVerboseBranch:
+    def test_no_verbose_cmd_output(self, tmp_path, monkeypatch) -> None:
+        """When config.verbose is False, _ensure_sandbox skips cmd log line."""
+        hand = _make_hand(tmp_path)
+        hand.config = Config(
+            repo=str(tmp_path), model="claude-sonnet-4-5", verbose=False
+        )
+        monkeypatch.setattr(
+            "helping_hands.lib.hands.v1.hand.cli.docker_sandbox_claude.shutil.which",
+            lambda cmd: "/usr/bin/docker",
+        )
+        monkeypatch.setenv("HELPING_HANDS_DOCKER_SANDBOX_NAME", "test-sb")
+        monkeypatch.delenv("HELPING_HANDS_DOCKER_SANDBOX_TEMPLATE", raising=False)
+
+        with patch.object(
+            DockerSandboxClaudeCodeHand,
+            "_docker_sandbox_available",
+            new_callable=AsyncMock,
+            return_value=True,
+        ):
+            mock_stdout = AsyncMock()
+            mock_stdout.read = AsyncMock(side_effect=[b"ok\n", b""])
+            mock_proc = AsyncMock()
+            mock_proc.stdout = mock_stdout
+            mock_proc.returncode = 0
+            mock_proc.wait = AsyncMock()
+
+            with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
+                emitted: list[str] = []
+
+                async def capture_emit(text: str) -> None:
+                    emitted.append(text)
+
+                asyncio.new_event_loop().run_until_complete(
+                    hand._ensure_sandbox(capture_emit)
+                )
+
+        # Should NOT contain "cmd:" verbose line
+        assert not any("cmd:" in e for e in emitted)
+        # Should contain the "Creating sandbox" line
+        assert any("Creating sandbox" in e for e in emitted)
+
+    def test_verbose_includes_cmd_output(self, tmp_path, monkeypatch) -> None:
+        """When config.verbose is True, _ensure_sandbox emits cmd line."""
+        hand = _make_hand(tmp_path)
+        hand.config = Config(
+            repo=str(tmp_path), model="claude-sonnet-4-5", verbose=True
+        )
+        monkeypatch.setattr(
+            "helping_hands.lib.hands.v1.hand.cli.docker_sandbox_claude.shutil.which",
+            lambda cmd: "/usr/bin/docker",
+        )
+        monkeypatch.setenv("HELPING_HANDS_DOCKER_SANDBOX_NAME", "test-sb")
+        monkeypatch.delenv("HELPING_HANDS_DOCKER_SANDBOX_TEMPLATE", raising=False)
+
+        with patch.object(
+            DockerSandboxClaudeCodeHand,
+            "_docker_sandbox_available",
+            new_callable=AsyncMock,
+            return_value=True,
+        ):
+            mock_stdout = AsyncMock()
+            mock_stdout.read = AsyncMock(side_effect=[b"ok\n", b""])
+            mock_proc = AsyncMock()
+            mock_proc.stdout = mock_stdout
+            mock_proc.returncode = 0
+            mock_proc.wait = AsyncMock()
+
+            with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
+                emitted: list[str] = []
+
+                async def capture_emit(text: str) -> None:
+                    emitted.append(text)
+
+                asyncio.new_event_loop().run_until_complete(
+                    hand._ensure_sandbox(capture_emit)
+                )
+
+        # Should contain "cmd:" verbose line
+        assert any("cmd:" in e for e in emitted)
+
+
+# ---------------------------------------------------------------------------
+# _build_failure_message sandbox-already-in-base branch (268->273)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFailureMessageSandboxInBase:
+    def test_skips_note_when_base_contains_sandbox(self, hand, monkeypatch) -> None:
+        """When _build_claude_failure_message already mentions 'sandbox',
+        the extra note is not appended (branch 268->273)."""
+        monkeypatch.setenv("HELPING_HANDS_DOCKER_SANDBOX_NAME", "test-sb")
+        with patch.object(
+            DockerSandboxClaudeCodeHand,
+            "_build_claude_failure_message",
+            return_value="CLI failed inside sandbox environment",
+        ):
+            msg = hand._build_failure_message(return_code=42, output="generic error")
+        # Should NOT have the extra "Note:" appended
+        assert "Note:" not in msg
+        assert msg == "CLI failed inside sandbox environment"
