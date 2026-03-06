@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v34](exec-plans/completed/docs-and-testing-v34.md) --
+  E2EHand.run() unit tests with mocked GitHubClient (dry-run/fresh-PR/resumed-PR/empty-repo/configured-base-branch/default-branch-fallback/auto-uuid), E2EHand.stream() yield test, placeholders.py backward-compat shim tests (re-exports, module aliases, identity checks); e2e.py coverage 25% -> 98%; 1278 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v33](exec-plans/completed/docs-and-testing-v33.md) --
   Schedule module edge case tests (`trigger_now` happy path/missing/param forwarding, `get_schedule_manager`, `create_schedule` enabled/disabled branches, `update_schedule` enabled/disabled branches, `_create_redbeat_entry` invalid cron validation, `_delete_redbeat_entry` KeyError handling, `list_schedules` None filtering, `ScheduledTask` fix_ci/ci_check_wait_minutes roundtrip); DESIGN.md updated with scheduling pattern; schedules.py 80% -> 93%; 1473 tests pass (completed 2026-03-06)
 
