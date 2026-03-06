@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v54](exec-plans/completed/docs-and-testing-v54.md) --
+  Frontend component test coverage expansion: form submission flow (POST payload validation, error handling, model/tools/skills inclusion, checkbox toggles, max iterations), monitor view (output tab switching Updates/Raw/Payload, task ID badge, status blinker, task inputs), schedule view (form rendering, field changes, cron preset dropdown, schedule creation API, Cancel button, Refresh, error handling); mockResponse helper with clone() support; frontend coverage 54% -> 71.5% statements, 81.2% branches; 134 frontend tests pass, 1470 backend tests pass (completed 2026-03-06)
+
 - [Docs and Testing v53](exec-plans/completed/docs-and-testing-v53.md) --
   Branch coverage gap closure: base.py `_run_precommit_checks_and_fixes` stdout-only branch, `_finalize_repo_pr` pr_number delegation and empty default_branch fallback; registry.py `normalize_tool_selection` non-string ValueError and `format_tool_instructions_for_cli` tool-without-guidance skip; web.py `search_web` RelatedTopics non-list skip; goose.py line 135 dead code documented in tech-debt-tracker; registry.py 98% -> 99%, web.py 98% -> 99%; 1470 backend tests pass (completed 2026-03-06)
 
