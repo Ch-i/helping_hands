@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import App from "./App";
 
@@ -82,5 +82,94 @@ describe("App component", () => {
   it("renders the submitted tasks header", () => {
     render(<App />);
     expect(screen.getByText("Submitted tasks")).toBeInTheDocument();
+  });
+});
+
+describe("App interaction", () => {
+  it("switches to Hand world view when toggle is clicked", () => {
+    render(<App />);
+    const worldButton = screen.getByText("Hand world");
+    expect(worldButton).toHaveAttribute("aria-selected", "false");
+
+    fireEvent.click(worldButton);
+
+    expect(worldButton).toHaveAttribute("aria-selected", "true");
+    const classicButton = screen.getByText("Classic view");
+    expect(classicButton).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("switches back to Classic view when toggle is clicked", () => {
+    render(<App />);
+    // Switch to world first
+    fireEvent.click(screen.getByText("Hand world"));
+    // Switch back
+    fireEvent.click(screen.getByText("Classic view"));
+
+    expect(screen.getByText("Classic view")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Hand world")).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("navigates to scheduled tasks view when button is clicked", () => {
+    render(<App />);
+    const scheduledBtn = screen.getByText("Scheduled tasks");
+    fireEvent.click(scheduledBtn);
+
+    // The schedule view should now be active (button gets active class)
+    expect(scheduledBtn.className).toContain("active");
+  });
+
+  it("navigates back to submission view via New submission button", () => {
+    render(<App />);
+    // Navigate away first
+    fireEvent.click(screen.getByText("Scheduled tasks"));
+    // Navigate back
+    const newSubmBtn = screen.getByText("New submission");
+    fireEvent.click(newSubmBtn);
+
+    // The submission form should be visible (Run button present)
+    expect(screen.getByText("Run")).toBeInTheDocument();
+  });
+
+  it("opens the Advanced settings panel in the submission form", () => {
+    render(<App />);
+    const advancedSummary = screen.getByText("Advanced");
+    expect(advancedSummary).toBeInTheDocument();
+
+    // Click to expand (details/summary)
+    fireEvent.click(advancedSummary);
+
+    // Backend select should be visible after expanding
+    const backendLabel = screen.getByText("Backend");
+    expect(backendLabel).toBeInTheDocument();
+  });
+
+  it("changes the repo path input value", () => {
+    render(<App />);
+    const repoInput = screen.getByPlaceholderText("owner/repo") as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: "other/repo" } });
+    expect(repoInput.value).toBe("other/repo");
+  });
+
+  it("changes the prompt input value", () => {
+    render(<App />);
+    const promptInput = screen.getByPlaceholderText("Prompt") as HTMLInputElement;
+    fireEvent.change(promptInput, { target: { value: "Fix all bugs" } });
+    expect(promptInput.value).toBe("Fix all bugs");
+  });
+
+  it("changes the backend select value in advanced settings", () => {
+    render(<App />);
+    // Expand advanced
+    fireEvent.click(screen.getByText("Advanced"));
+
+    const backendSelect = screen.getByDisplayValue("claudecodecli") as HTMLSelectElement;
+    fireEvent.change(backendSelect, { target: { value: "goose" } });
+    expect(backendSelect.value).toBe("goose");
+  });
+
+  it("renders Clear button disabled when no task history", () => {
+    render(<App />);
+    const clearBtn = screen.getByText("Clear");
+    expect(clearBtn).toBeDisabled();
   });
 });

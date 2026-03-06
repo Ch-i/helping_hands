@@ -581,3 +581,156 @@ describe("parseOptimisticUpdates edge cases", () => {
     expect(result).toEqual(["Repository index loaded (1 files).", "Some other line"]);
   });
 });
+
+describe("statusTone additional statuses", () => {
+  it("maps RECEIVED to run", () => {
+    expect(statusTone("RECEIVED")).toBe("run");
+  });
+
+  it("maps RETRY to run", () => {
+    expect(statusTone("RETRY")).toBe("run");
+  });
+
+  it("maps SCHEDULED to run", () => {
+    expect(statusTone("SCHEDULED")).toBe("run");
+  });
+
+  it("maps RESERVED to run", () => {
+    expect(statusTone("RESERVED")).toBe("run");
+  });
+
+  it("maps SENT to run", () => {
+    expect(statusTone("SENT")).toBe("run");
+  });
+
+  it("maps ERROR to idle (not a recognized terminal tone)", () => {
+    expect(statusTone("ERROR")).toBe("idle");
+  });
+
+  it("maps unknown statuses case-insensitively", () => {
+    expect(statusTone("  queued  ")).toBe("run");
+    expect(statusTone("Failure")).toBe("fail");
+  });
+});
+
+describe("cronFrequency additional patterns", () => {
+  it("matches hourly fallback pattern for non-preset hourly cron", () => {
+    const result = cronFrequency("0 */2 * * *");
+    expect(result).not.toBeNull();
+    expect(result!.label).toBe("hourly");
+  });
+
+  it("returns null for empty string", () => {
+    const result = cronFrequency("");
+    expect(result).not.toBeNull();
+    expect(result!.label).toBe("cron");
+  });
+
+  it("matches minute-interval fallback for non-preset intervals", () => {
+    const result = cronFrequency("*/7 * * * *");
+    expect(result).not.toBeNull();
+    expect(result!.label).toBe("*/7");
+  });
+});
+
+describe("loadTaskHistory edge cases", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_700_000_000_000);
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    window.localStorage.clear();
+  });
+
+  it("returns empty array for invalid JSON", () => {
+    window.localStorage.setItem(TASK_HISTORY_STORAGE_KEY, "not-json{{{");
+    expect(loadTaskHistory()).toEqual([]);
+  });
+
+  it("returns empty array for non-array JSON", () => {
+    window.localStorage.setItem(TASK_HISTORY_STORAGE_KEY, JSON.stringify({ foo: "bar" }));
+    expect(loadTaskHistory()).toEqual([]);
+  });
+
+  it("skips entries with empty taskId", () => {
+    window.localStorage.setItem(
+      TASK_HISTORY_STORAGE_KEY,
+      JSON.stringify([
+        { taskId: "", status: "SUCCESS", backend: "codexcli", repoPath: "owner/repo" },
+        { taskId: "valid-id", status: "SUCCESS", backend: "codexcli", repoPath: "owner/repo" },
+      ])
+    );
+    const result = loadTaskHistory();
+    expect(result).toHaveLength(1);
+    expect(result[0].taskId).toBe("valid-id");
+  });
+
+  it("returns empty array when localStorage is empty", () => {
+    expect(loadTaskHistory()).toEqual([]);
+  });
+
+  it("enforces the 60-item limit", () => {
+    const items = Array.from({ length: 70 }, (_, i) => ({
+      taskId: `task-${i}`,
+      status: "SUCCESS",
+      backend: "codexcli",
+      repoPath: "owner/repo",
+      createdAt: 1_700_000_000_000,
+      lastUpdatedAt: 1_700_000_000_000,
+    }));
+    window.localStorage.setItem(TASK_HISTORY_STORAGE_KEY, JSON.stringify(items));
+    expect(loadTaskHistory()).toHaveLength(60);
+  });
+});
+
+describe("upsertTaskHistory edge cases", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_700_000_000_000);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns items unchanged when patch has empty taskId", () => {
+    const existing = [
+      {
+        taskId: "task-1",
+        status: "SUCCESS",
+        backend: "codexcli",
+        repoPath: "owner/repo",
+        createdAt: 1_700_000_000_000,
+        lastUpdatedAt: 1_700_000_000_000,
+      },
+    ];
+    const result = upsertTaskHistory(existing, { taskId: "" });
+    expect(result).toBe(existing);
+  });
+
+  it("returns items unchanged when patch has whitespace-only taskId", () => {
+    const existing = [
+      {
+        taskId: "task-1",
+        status: "SUCCESS",
+        backend: "codexcli",
+        repoPath: "owner/repo",
+        createdAt: 1_700_000_000_000,
+        lastUpdatedAt: 1_700_000_000_000,
+      },
+    ];
+    const result = upsertTaskHistory(existing, { taskId: "   " });
+    expect(result).toBe(existing);
+  });
+
+  it("uses default values when patch has no optional fields", () => {
+    const result = upsertTaskHistory([], { taskId: "new-task" });
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe("queued");
+    expect(result[0].backend).toBe("unknown");
+    expect(result[0].repoPath).toBe("");
+  });
+});

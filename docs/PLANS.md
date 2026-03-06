@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v52](exec-plans/completed/docs-and-testing-v52.md) --
+  Frontend test coverage expansion: utility edge cases (loadTaskHistory invalid JSON/non-array/empty taskId/limit enforcement, upsertTaskHistory empty/whitespace taskId/defaults, statusTone RECEIVED/RETRY/SCHEDULED/RESERVED/SENT/ERROR, cronFrequency hourly/minute-interval/empty fallbacks); component interaction tests (Hand world/Classic view toggle, schedule navigation, New submission return, Advanced settings expand, repo path/prompt/backend input changes, Clear button disabled); 110 frontend tests pass, 1464 backend tests pass (completed 2026-03-06)
+
 - [Docs and Testing v51](exec-plans/completed/docs-and-testing-v51.md) --
   Backend test coverage gaps: iterative.py `_build_tree_snapshot` slash-only/multi-slash empty-parts edge cases (line 451); cli/base.py `stream()` producer_task cancellation path (lines 1047-1049); confirmed dead code items (iterative.py 830/858, codex.py 62) in tech-debt-tracker; QUALITY_SCORE.md updated; 1464 tests pass (completed 2026-03-06)
 
