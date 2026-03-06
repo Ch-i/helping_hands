@@ -14,6 +14,7 @@ Index of design documents for helping_hands.
 - [Config Loading](config-loading.md) — Env loading precedence, dotenv, normalization, and frozen config
 - [Repo Indexing](repo-indexing.md) — Repository ingestion, tree walking, and RepoIndex design
 - [Scheduling System](scheduling-system.md) — RedBeat, ScheduleManager CRUD, cron presets, trigger-now
+- [Deployment Modes](deployment-modes.md) — CLI vs Server vs MCP runtime modes
 
 ## Adding a design doc
 
