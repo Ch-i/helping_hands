@@ -490,3 +490,113 @@ class TestStreamWrapper:
         # PR status message should be yielded
         pr_msgs = [c for c in chunks if "PR created" in c]
         assert len(pr_msgs) == 1
+
+    def test_stream_yields_ci_fix_message(self) -> None:
+        stub = _Stub(fix_ci=True)
+
+        async def _fake_two_phase(prompt, *, emit):
+            await emit("work")
+            return "work"
+
+        with (
+            patch.object(stub, "_run_two_phase", side_effect=_fake_two_phase),
+            patch.object(
+                stub,
+                "_finalize_after_run",
+                return_value={"pr_status": "created", "pr_url": "https://pr/1"},
+            ),
+            patch.object(
+                stub,
+                "_ci_fix_loop",
+                new=AsyncMock(
+                    return_value={
+                        "pr_status": "created",
+                        "pr_url": "https://pr/1",
+                        "ci_fix_status": "success",
+                    }
+                ),
+            ),
+        ):
+
+            async def _collect():
+                chunks = []
+                async for chunk in stub.stream("task"):
+                    chunks.append(chunk)
+                return chunks
+
+            chunks = _run(_collect())
+
+        joined = "".join(chunks)
+        assert "CI checks passed" in joined
+
+    def test_stream_no_pr_status_message_when_none(self) -> None:
+        stub = _Stub(fix_ci=False)
+
+        async def _fake_two_phase(prompt, *, emit):
+            await emit("output")
+            return "output"
+
+        with (
+            patch.object(stub, "_run_two_phase", side_effect=_fake_two_phase),
+            patch.object(
+                stub,
+                "_finalize_after_run",
+                return_value={"pr_status": ""},
+            ),
+            patch.object(
+                stub,
+                "_ci_fix_loop",
+                new=AsyncMock(return_value={"pr_status": ""}),
+            ),
+            patch.object(stub, "_format_ci_fix_message", return_value=None),
+        ):
+
+            async def _collect():
+                chunks = []
+                async for chunk in stub.stream("task"):
+                    chunks.append(chunk)
+                return chunks
+
+            chunks = _run(_collect())
+
+        # Only the original emitted chunk — no PR status or CI fix messages
+        assert chunks == ["output"]
+
+    def test_stream_ci_fix_exhausted_message(self) -> None:
+        stub = _Stub(fix_ci=True)
+
+        async def _fake_two_phase(prompt, *, emit):
+            await emit("done")
+            return "done"
+
+        with (
+            patch.object(stub, "_run_two_phase", side_effect=_fake_two_phase),
+            patch.object(
+                stub,
+                "_finalize_after_run",
+                return_value={"pr_status": "created", "pr_url": "https://pr/1"},
+            ),
+            patch.object(
+                stub,
+                "_ci_fix_loop",
+                new=AsyncMock(
+                    return_value={
+                        "pr_status": "created",
+                        "pr_url": "https://pr/1",
+                        "ci_fix_status": "exhausted",
+                        "ci_fix_attempts": "2",
+                    }
+                ),
+            ),
+        ):
+
+            async def _collect():
+                chunks = []
+                async for chunk in stub.stream("task"):
+                    chunks.append(chunk)
+                return chunks
+
+            chunks = _run(_collect())
+
+        joined = "".join(chunks)
+        assert "CI fix failed after 2 attempt(s)" in joined

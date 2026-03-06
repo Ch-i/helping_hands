@@ -483,3 +483,104 @@ class TestRunTwoPhase:
         with pytest.raises(RuntimeError, match="boom"):
             _run(stub._run_two_phase("task", emit=_noop_emit()))
         assert cleanup_calls == [True]
+
+
+# ===================================================================
+# _run_two_phase_inner — verbose mode branches
+# ===================================================================
+
+
+class TestRunTwoPhaseInnerVerbose:
+    @staticmethod
+    def _make_stub(*, verbose: bool = True):
+        stub = _Stub()
+        stub.config.verbose = verbose
+        stub.config.model = "gpt-5"
+        stub.auto_pr = False
+        stub._build_init_prompt = lambda: "init"
+        stub._build_task_prompt = lambda prompt, learned_summary: "task"
+        stub._should_retry_without_changes = lambda prompt: False
+        stub._is_interrupted = lambda: False
+        return stub
+
+    def test_verbose_emits_model_heartbeat_and_phase_timings(self) -> None:
+        stub = self._make_stub(verbose=True)
+        emit, chunks = _collecting_emit()
+
+        call_count = 0
+
+        async def fake_invoke_backend(prompt, *, emit):
+            nonlocal call_count
+            call_count += 1
+            return f"output{call_count}"
+
+        stub._invoke_backend = fake_invoke_backend
+        stub._describe_auth = lambda: "key set"
+        stub._resolve_cli_model = lambda: "gpt-5"
+
+        _run(stub._run_two_phase_inner("task", emit=emit))
+
+        joined = "".join(chunks)
+        assert "model=gpt-5" in joined
+        assert "heartbeat=" in joined
+        assert "idle_timeout=" in joined
+        assert "phase 1 completed" in joined
+        assert "phase 2 completed" in joined
+        assert "total elapsed" in joined
+
+    def test_verbose_auth_part_omitted_when_empty(self) -> None:
+        stub = self._make_stub(verbose=False)
+        emit, chunks = _collecting_emit()
+
+        call_count = 0
+
+        async def fake_invoke_backend(prompt, *, emit):
+            nonlocal call_count
+            call_count += 1
+            return f"output{call_count}"
+
+        stub._invoke_backend = fake_invoke_backend
+        stub._describe_auth = lambda: ""
+
+        _run(stub._run_two_phase_inner("task", emit=emit))
+
+        isolation_msgs = [c for c in chunks if "isolation=" in c]
+        assert len(isolation_msgs) == 1
+        # No auth part appended when _describe_auth returns empty
+        assert " | key" not in isolation_msgs[0]
+
+    def test_verbose_default_model_when_resolve_returns_none(self) -> None:
+        stub = self._make_stub(verbose=True)
+        emit, chunks = _collecting_emit()
+
+        call_count = 0
+
+        async def fake_invoke_backend(prompt, *, emit):
+            nonlocal call_count
+            call_count += 1
+            return f"output{call_count}"
+
+        stub._invoke_backend = fake_invoke_backend
+        stub._describe_auth = lambda: ""
+        stub._resolve_cli_model = lambda: None
+
+        _run(stub._run_two_phase_inner("task", emit=emit))
+
+        joined = "".join(chunks)
+        assert "model=(default)" in joined
+
+    def test_auth_part_included_when_non_empty(self) -> None:
+        stub = self._make_stub(verbose=False)
+        emit, chunks = _collecting_emit()
+
+        async def fake_invoke_backend(prompt, *, emit):
+            return "done"
+
+        stub._invoke_backend = fake_invoke_backend
+        stub._describe_auth = lambda: "API key set"
+
+        _run(stub._run_two_phase_inner("task", emit=emit))
+
+        isolation_msgs = [c for c in chunks if "isolation=" in c]
+        assert len(isolation_msgs) == 1
+        assert "API key set" in isolation_msgs[0]

@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v44](exec-plans/completed/docs-and-testing-v44.md) --
+  cli/base.py `stream()` CI fix message/pr_status paths; base.py `_finalize_repo_pr` native git auth and rich PR description; cli/base.py `_run_two_phase_inner` verbose mode; base.py 98% -> 99%; cli/base.py 97% -> 98%; QUALITY_SCORE.md updated; 1413 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v43](exec-plans/completed/docs-and-testing-v43.md) --
   celery_app.py coverage gaps (`_get_db_url_writer`, `ensure_usage_schedule`, `log_claude_usage` key paths including raw JWT and garbage output); ARCHITECTURE.md usage monitoring section; celery_app.py 73% -> 98%; QUALITY_SCORE.md updated; 1653 tests pass (completed 2026-03-06)
 
