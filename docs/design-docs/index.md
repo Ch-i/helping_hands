@@ -9,6 +9,7 @@ Index of design documents for helping_hands.
 - [Two-Phase CLI Hands](two-phase-cli-hands.md) — Subprocess architecture, retry logic, and sandboxing
 - [Provider Abstraction](provider-abstraction.md) — AI provider interface, model resolution, and backend adapters
 - [Testing Methodology](testing-methodology.md) — Coverage-guided iteration, test patterns, and dead code documentation
+- [Error Handling](error-handling.md) — Recovery patterns, fallback chains, and narrow failure boundaries
 
 ## Adding a design doc
 

@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v64](exec-plans/completed/docs-and-testing-v64.md) --
+  Refactor test_cli_hand_goose.py to shared `make_cli_hand` fixture; add conftest fixture self-tests (10 tests); update AGENTS.md with Docker Sandbox and scheduled agents; add error-handling design doc; 1495 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v63](exec-plans/completed/docs-and-testing-v63.md) --
   Consolidate v32-v62 into `2026-03-06.md` (31 files -> 1); add `make_cli_hand` factory fixture to conftest.py; refactor 5 CLI hand test files to use shared fixture; 1485 tests pass (completed 2026-03-06)
 
