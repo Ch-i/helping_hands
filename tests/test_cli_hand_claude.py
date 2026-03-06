@@ -125,6 +125,37 @@ class TestSkipPermissionsEnabled:
         monkeypatch.setattr("os.geteuid", lambda: 0)
         assert claude_hand._skip_permissions_enabled() is False
 
+    def test_enabled_when_geteuid_raises(self, claude_hand, monkeypatch) -> None:
+        monkeypatch.delenv(
+            "HELPING_HANDS_CLAUDE_DANGEROUS_SKIP_PERMISSIONS", raising=False
+        )
+
+        def _broken_geteuid():
+            raise OSError("geteuid unavailable")
+
+        monkeypatch.setattr("os.geteuid", _broken_geteuid)
+        assert claude_hand._skip_permissions_enabled() is True
+
+
+# ---------------------------------------------------------------------------
+# _build_failure_message (instance delegation)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFailureMessageInstance:
+    def test_delegates_to_static_method(self, claude_hand) -> None:
+        msg = claude_hand._build_failure_message(
+            return_code=1, output="401 Unauthorized"
+        )
+        assert "authentication failed" in msg
+        assert "ANTHROPIC_API_KEY" in msg
+
+    def test_generic_error_delegation(self, claude_hand) -> None:
+        msg = claude_hand._build_failure_message(
+            return_code=42, output="something broke"
+        )
+        assert "Claude Code CLI failed (exit=42)" in msg
+
 
 # ---------------------------------------------------------------------------
 # _apply_backend_defaults
@@ -700,6 +731,26 @@ class TestStreamJsonEmitterEdgeCases:
         event = json.dumps({"type": "system", "data": "ignored"})
         self._run(parser(event + "\n"))
         assert emitted == []
+
+    def test_empty_lines_between_events_skipped(self) -> None:
+        """Lines that are blank after stripping should be silently skipped."""
+        emitted: list[str] = []
+
+        async def emit(text: str) -> None:
+            emitted.append(text)
+
+        parser = _StreamJsonEmitter(emit, "test")
+        event = json.dumps(
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "hello"}]},
+            }
+        )
+        # Chunk with blank lines between valid JSON lines
+        self._run(parser(event + "\n\n   \n" + event + "\n"))
+        text_emissions = [e for e in emitted if "[test]" in e]
+        # Only the two valid events should produce output, blank lines skipped
+        assert len(text_emissions) == 2
 
 
 # ---------------------------------------------------------------------------

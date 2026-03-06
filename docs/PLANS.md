@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v48](exec-plans/completed/docs-and-testing-v48.md) --
+  Claude CLI `_skip_permissions_enabled` geteuid exception path, `_build_failure_message` instance delegation, `_StreamJsonEmitter` empty-line-between-events; Gemini CLI `_build_failure_message` instance delegation, `_invoke_gemini`/`_invoke_backend` async delegation; Goose CLI `_resolve_goose_provider_model_from_config` (7 tests), `_invoke_backend` delegation; QUALITY_SCORE.md updated; 1456 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v47](exec-plans/completed/docs-and-testing-v47.md) --
   Fix frontend localStorage.clear jsdom test failures (3 tests failing -> 0); add frontend tests for `apiUrl`, `isTerminalTaskStatus`, `parseError` edge cases (detail-missing/empty-body), additional `statusTone` coverage (14 -> 20 tests); document dead code in tech-debt-tracker (iterative.py lines 830/858, codex.py line 62); QUALITY_SCORE.md updated with frontend coverage; all tests pass (completed 2026-03-06)
 

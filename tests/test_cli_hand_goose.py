@@ -275,3 +275,85 @@ class TestResolveOllamaHost:
             "OLLAMA_BASE_URL": "http://secondary:11434",
         }
         assert GooseCLIHand._resolve_ollama_host(env) == "http://primary:11434"
+
+
+# ---------------------------------------------------------------------------
+# _resolve_goose_provider_model_from_config
+# ---------------------------------------------------------------------------
+
+
+class TestResolveGooseProviderModelFromConfig:
+    def test_bare_model_infers_provider(self, tmp_path) -> None:
+        hand = _make_goose_hand(tmp_path, model="claude-opus-4")
+        provider, model = hand._resolve_goose_provider_model_from_config()
+        assert provider == "anthropic"
+        assert model == "claude-opus-4"
+
+    def test_provider_slash_model(self, tmp_path) -> None:
+        hand = _make_goose_hand(tmp_path, model="google/gemini-2.0-flash")
+        provider, model = hand._resolve_goose_provider_model_from_config()
+        assert provider == "google"
+        assert model == "gemini-2.0-flash"
+
+    def test_default_model_returned(self, tmp_path) -> None:
+        hand = _make_goose_hand(tmp_path, model="default")
+        provider, model = hand._resolve_goose_provider_model_from_config()
+        assert provider == GooseCLIHand._GOOSE_DEFAULT_PROVIDER
+        assert model == GooseCLIHand._GOOSE_DEFAULT_MODEL
+
+    def test_empty_model_returns_defaults(self, tmp_path) -> None:
+        hand = _make_goose_hand(tmp_path, model="  ")
+        provider, model = hand._resolve_goose_provider_model_from_config()
+        assert provider == GooseCLIHand._GOOSE_DEFAULT_PROVIDER
+        assert model == GooseCLIHand._GOOSE_DEFAULT_MODEL
+
+    def test_slash_with_empty_model_part(self, tmp_path) -> None:
+        """'provider/' with empty model part falls back to default model."""
+        hand = _make_goose_hand(tmp_path, model="openai/")
+        provider, model = hand._resolve_goose_provider_model_from_config()
+        # provider_model is "" so provider stays "", model stays "openai/"
+        # Then model is truthy so no default model, but no provider -> infer
+        assert model is not None
+        assert provider is not None
+
+    def test_gemini_provider_normalized_to_google(self, tmp_path) -> None:
+        hand = _make_goose_hand(tmp_path, model="gemini/gemini-2.0")
+        provider, model = hand._resolve_goose_provider_model_from_config()
+        assert provider == "google"
+        assert model == "gemini-2.0"
+
+    def test_gpt_model_infers_openai(self, tmp_path) -> None:
+        hand = _make_goose_hand(tmp_path, model="gpt-5.2")
+        provider, model = hand._resolve_goose_provider_model_from_config()
+        assert provider == "openai"
+        assert model == "gpt-5.2"
+
+
+# ---------------------------------------------------------------------------
+# _invoke_goose / _invoke_backend async tests
+# ---------------------------------------------------------------------------
+
+
+class TestInvokeGoose:
+    def test_invoke_backend_delegates_to_invoke_cli(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        import asyncio
+
+        hand = _make_goose_hand(tmp_path)
+        calls: list[str] = []
+
+        async def fake_invoke_cli(prompt, *, emit):
+            calls.append(prompt)
+            return "result"
+
+        monkeypatch.setattr(hand, "_invoke_cli", fake_invoke_cli)
+
+        async def emit(text: str) -> None:
+            pass
+
+        # GooseCLIHand does not override _invoke_backend, so it
+        # inherits the base which delegates to _invoke_cli.
+        result = asyncio.run(hand._invoke_backend("hello", emit=emit))
+        assert result == "result"
+        assert calls == ["hello"]

@@ -295,6 +295,73 @@ class TestPrDescriptionCmd:
 
 
 # ---------------------------------------------------------------------------
+# _build_failure_message (instance delegation)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFailureMessageInstance:
+    def test_delegates_to_static_method(self, gemini_hand) -> None:
+        msg = gemini_hand._build_failure_message(
+            return_code=1, output="401 Unauthorized"
+        )
+        assert "authentication failed" in msg
+        assert "GEMINI_API_KEY" in msg
+
+    def test_generic_error_delegation(self, gemini_hand) -> None:
+        msg = gemini_hand._build_failure_message(
+            return_code=42, output="something broke"
+        )
+        assert "Gemini CLI failed (exit=42)" in msg
+
+
+# ---------------------------------------------------------------------------
+# _invoke_gemini / _invoke_backend async tests
+# ---------------------------------------------------------------------------
+
+
+class TestInvokeGemini:
+    def test_invoke_gemini_delegates_to_invoke_cli(
+        self, gemini_hand, monkeypatch
+    ) -> None:
+        import asyncio
+
+        calls: list[str] = []
+
+        async def fake_invoke_cli(prompt, *, emit):
+            calls.append(prompt)
+            return "result"
+
+        monkeypatch.setattr(gemini_hand, "_invoke_cli", fake_invoke_cli)
+
+        async def emit(text: str) -> None:
+            pass
+
+        result = asyncio.run(gemini_hand._invoke_gemini("fix it", emit=emit))
+        assert result == "result"
+        assert calls == ["fix it"]
+
+    def test_invoke_backend_delegates_to_invoke_gemini(
+        self, gemini_hand, monkeypatch
+    ) -> None:
+        import asyncio
+
+        calls: list[str] = []
+
+        async def fake_invoke_gemini(prompt, *, emit):
+            calls.append(prompt)
+            return "delegated"
+
+        monkeypatch.setattr(gemini_hand, "_invoke_gemini", fake_invoke_gemini)
+
+        async def emit(text: str) -> None:
+            pass
+
+        result = asyncio.run(gemini_hand._invoke_backend("hello", emit=emit))
+        assert result == "delegated"
+        assert calls == ["hello"]
+
+
+# ---------------------------------------------------------------------------
 # _command_not_found_message
 # ---------------------------------------------------------------------------
 
