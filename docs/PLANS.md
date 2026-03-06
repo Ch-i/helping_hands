@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v72](exec-plans/completed/docs-and-testing-v72.md) --
+  GitHub client design doc; extended docs structure validation tests (API docs link validity, completed plan structure, design-docs index count; 7 new); 1602 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v71](exec-plans/completed/docs-and-testing-v71.md) --
   Skills system design doc; extended docs structure validation tests (product-specs index, root-level docs, reference files, tech-debt-tracker module refs; 6 new); 1595 tests pass (completed 2026-03-06)
 

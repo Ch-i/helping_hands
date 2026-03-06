@@ -190,3 +190,101 @@ class TestTechDebtTrackerModuleRefs:
                     f"Tech debt tracker references `{mod}` but no matching "
                     f"file found under src/helping_hands/"
                 )
+
+
+class TestApiDocsReferencesExist:
+    """API doc links in docs/index.md must point to existing files."""
+
+    @pytest.fixture()
+    def index_text(self) -> str:
+        return (DOCS_DIR / "index.md").read_text()
+
+    def test_api_reference_links_resolve(self, index_text: str) -> None:
+        """Every (api/...) link in the API Reference section must exist."""
+        api_links = re.findall(r"\(api/([^)]+\.md)\)", index_text)
+        assert len(api_links) > 0, "docs/index.md should have API reference links"
+        for link in api_links:
+            path = DOCS_DIR / "api" / link
+            assert path.is_file(), (
+                f"docs/index.md references api/{link} but the file does not exist"
+            )
+
+    def test_api_docs_are_non_empty(self) -> None:
+        """Every .md file under docs/api/ should have content."""
+        api_dir = DOCS_DIR / "api"
+        api_files = sorted(api_dir.rglob("*.md"))
+        assert len(api_files) > 0, "docs/api/ should have files"
+        for api_file in api_files:
+            content = api_file.read_text()
+            assert len(content.strip()) > 0, (
+                f"API doc '{api_file.relative_to(DOCS_DIR)}' is empty"
+            )
+
+
+class TestCompletedPlanStructure:
+    """Completed exec plans should have required sections."""
+
+    @pytest.fixture()
+    def completed_plan_paths(self) -> list[Path]:
+        completed = DOCS_DIR / "exec-plans" / "completed"
+        if not completed.exists():
+            return []
+        return sorted(completed.glob("*.md"))
+
+    def test_completed_plans_exist(self, completed_plan_paths: list[Path]) -> None:
+        assert len(completed_plan_paths) > 0, (
+            "exec-plans/completed/ should have at least one plan"
+        )
+
+    def test_versioned_plans_have_status(
+        self, completed_plan_paths: list[Path]
+    ) -> None:
+        """Versioned plans (not date-consolidated) must have a Status field."""
+        for plan_path in completed_plan_paths:
+            # Date-consolidated files (2026-03-04.md) are summaries, skip them
+            if re.match(r"\d{4}-\d{2}-\d{2}\.md$", plan_path.name):
+                continue
+            content = plan_path.read_text()
+            assert "**Status:**" in content, (
+                f"Completed plan '{plan_path.name}' is missing **Status:** field"
+            )
+
+    def test_versioned_plans_have_tasks_section(
+        self, completed_plan_paths: list[Path]
+    ) -> None:
+        """Versioned plans must have a Tasks section."""
+        for plan_path in completed_plan_paths:
+            if re.match(r"\d{4}-\d{2}-\d{2}\.md$", plan_path.name):
+                continue
+            content = plan_path.read_text()
+            assert "## Tasks" in content, (
+                f"Completed plan '{plan_path.name}' is missing ## Tasks section"
+            )
+
+    def test_consolidated_plans_have_version_entries(
+        self, completed_plan_paths: list[Path]
+    ) -> None:
+        """Date-consolidated plans should contain at least one version heading."""
+        for plan_path in completed_plan_paths:
+            if not re.match(r"\d{4}-\d{2}-\d{2}\.md$", plan_path.name):
+                continue
+            content = plan_path.read_text()
+            # Match headings like "## v32 - ..." or "## Docs and Testing v2"
+            version_headings = re.findall(r"^## .*v\d+", content, re.MULTILINE)
+            assert len(version_headings) > 0, (
+                f"Consolidated plan '{plan_path.name}' has no version entries"
+            )
+
+
+class TestDesignDocsIndexCount:
+    """design-docs/index.md link count should match actual file count."""
+
+    def test_link_count_matches_file_count(self) -> None:
+        dd = DOCS_DIR / "design-docs"
+        doc_files = [f for f in dd.glob("*.md") if f.name != "index.md"]
+        index_text = (dd / "index.md").read_text()
+        linked = re.findall(r"\(([^)]+\.md)\)", index_text)
+        assert len(linked) == len(doc_files), (
+            f"design-docs/index.md has {len(linked)} links "
+            f"but {len(doc_files)} .md files exist (excluding index.md)"
+        )

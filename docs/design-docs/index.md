@@ -17,6 +17,7 @@ Index of design documents for helping_hands.
 - [Deployment Modes](deployment-modes.md) — CLI vs Server vs MCP runtime modes
 - [CI Pipeline](ci-pipeline.md) — GitHub Actions workflows, matrix strategy, coverage, and docs deployment
 - [Skills System](skills-system.md) — Catalog discovery, normalization, staging, and prompt injection
+- [GitHub Client](github-client.md) — Authentication, clone/branch/PR lifecycle, and token safety
 
 ## Adding a design doc
 
