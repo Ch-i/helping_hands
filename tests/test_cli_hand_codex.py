@@ -6,25 +6,16 @@ import asyncio
 
 import pytest
 
-from helping_hands.lib.config import Config
 from helping_hands.lib.hands.v1.hand.cli.codex import CodexCLIHand
-from helping_hands.lib.repo import RepoIndex
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-def _make_codex_hand(tmp_path, model="gpt-5.2"):
-    (tmp_path / "main.py").write_text("")
-    config = Config(repo=str(tmp_path), model=model)
-    repo_index = RepoIndex.from_path(tmp_path)
-    return CodexCLIHand(config=config, repo_index=repo_index)
-
-
 @pytest.fixture()
-def codex_hand(tmp_path):
-    return _make_codex_hand(tmp_path)
+def codex_hand(make_cli_hand):
+    return make_cli_hand(CodexCLIHand, model="gpt-5.2")
 
 
 # ---------------------------------------------------------------------------

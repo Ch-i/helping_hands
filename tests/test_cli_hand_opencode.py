@@ -6,25 +6,16 @@ import asyncio
 
 import pytest
 
-from helping_hands.lib.config import Config
 from helping_hands.lib.hands.v1.hand.cli.opencode import OpenCodeCLIHand
-from helping_hands.lib.repo import RepoIndex
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-def _make_opencode_hand(tmp_path, model="anthropic/claude-sonnet-4-6"):
-    (tmp_path / "main.py").write_text("")
-    config = Config(repo=str(tmp_path), model=model)
-    repo_index = RepoIndex.from_path(tmp_path)
-    return OpenCodeCLIHand(config=config, repo_index=repo_index)
-
-
 @pytest.fixture()
-def opencode_hand(tmp_path):
-    return _make_opencode_hand(tmp_path)
+def opencode_hand(make_cli_hand):
+    return make_cli_hand(OpenCodeCLIHand, model="anthropic/claude-sonnet-4-6")
 
 
 # ---------------------------------------------------------------------------
@@ -82,20 +73,20 @@ class TestResolveCliModel:
         result = opencode_hand._resolve_cli_model()
         assert result == "anthropic/claude-sonnet-4-6"
 
-    def test_preserves_bare_model(self, tmp_path) -> None:
-        hand = _make_opencode_hand(tmp_path, model="claude-sonnet-4-5")
+    def test_preserves_bare_model(self, make_cli_hand) -> None:
+        hand = make_cli_hand(OpenCodeCLIHand, model="claude-sonnet-4-5")
         assert hand._resolve_cli_model() == "claude-sonnet-4-5"
 
-    def test_default_model_returns_empty(self, tmp_path) -> None:
-        hand = _make_opencode_hand(tmp_path, model="default")
+    def test_default_model_returns_empty(self, make_cli_hand) -> None:
+        hand = make_cli_hand(OpenCodeCLIHand, model="default")
         assert hand._resolve_cli_model() == ""
 
-    def test_empty_model_returns_empty(self, tmp_path) -> None:
-        hand = _make_opencode_hand(tmp_path, model="")
+    def test_empty_model_returns_empty(self, make_cli_hand) -> None:
+        hand = make_cli_hand(OpenCodeCLIHand, model="")
         assert hand._resolve_cli_model() == ""
 
-    def test_whitespace_model_returns_empty(self, tmp_path) -> None:
-        hand = _make_opencode_hand(tmp_path, model="  ")
+    def test_whitespace_model_returns_empty(self, make_cli_hand) -> None:
+        hand = make_cli_hand(OpenCodeCLIHand, model="  ")
         assert hand._resolve_cli_model() == ""
 
 

@@ -18,16 +18,9 @@ from helping_hands.lib.repo import RepoIndex
 # ---------------------------------------------------------------------------
 
 
-def _make_hand(tmp_path, model="claude-sonnet-4-5"):
-    (tmp_path / "main.py").write_text("")
-    config = Config(repo=str(tmp_path), model=model)
-    repo_index = RepoIndex.from_path(tmp_path)
-    return DockerSandboxClaudeCodeHand(config=config, repo_index=repo_index)
-
-
 @pytest.fixture()
-def hand(tmp_path):
-    return _make_hand(tmp_path)
+def hand(make_cli_hand):
+    return make_cli_hand(DockerSandboxClaudeCodeHand, model="claude-sonnet-4-5")
 
 
 # ---------------------------------------------------------------------------
@@ -609,9 +602,9 @@ class TestRunTwoPhase:
 
 
 class TestEnsureSandboxVerboseBranch:
-    def test_no_verbose_cmd_output(self, tmp_path, monkeypatch) -> None:
+    def test_no_verbose_cmd_output(self, make_cli_hand, tmp_path, monkeypatch) -> None:
         """When config.verbose is False, _ensure_sandbox skips cmd log line."""
-        hand = _make_hand(tmp_path)
+        hand = make_cli_hand(DockerSandboxClaudeCodeHand, model="claude-sonnet-4-5")
         hand.config = Config(
             repo=str(tmp_path), model="claude-sonnet-4-5", verbose=False
         )
@@ -650,9 +643,9 @@ class TestEnsureSandboxVerboseBranch:
         # Should contain the "Creating sandbox" line
         assert any("Creating sandbox" in e for e in emitted)
 
-    def test_verbose_includes_cmd_output(self, tmp_path, monkeypatch) -> None:
+    def test_verbose_includes_cmd_output(self, make_cli_hand, tmp_path, monkeypatch) -> None:
         """When config.verbose is True, _ensure_sandbox emits cmd line."""
-        hand = _make_hand(tmp_path)
+        hand = make_cli_hand(DockerSandboxClaudeCodeHand, model="claude-sonnet-4-5")
         hand.config = Config(
             repo=str(tmp_path), model="claude-sonnet-4-5", verbose=True
         )

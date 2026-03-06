@@ -7,28 +7,19 @@ import json
 
 import pytest
 
-from helping_hands.lib.config import Config
 from helping_hands.lib.hands.v1.hand.cli.claude import (
     ClaudeCodeHand,
     _StreamJsonEmitter,
 )
-from helping_hands.lib.repo import RepoIndex
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-def _make_hand(tmp_path, model="claude-sonnet-4-5"):
-    (tmp_path / "main.py").write_text("")
-    config = Config(repo=str(tmp_path), model=model)
-    repo_index = RepoIndex.from_path(tmp_path)
-    return ClaudeCodeHand(config=config, repo_index=repo_index)
-
-
 @pytest.fixture()
-def claude_hand(tmp_path):
-    return _make_hand(tmp_path)
+def claude_hand(make_cli_hand):
+    return make_cli_hand(ClaudeCodeHand, model="claude-sonnet-4-5")
 
 
 # ---------------------------------------------------------------------------
@@ -78,20 +69,20 @@ class TestBuildClaudeFailureMessage:
 
 
 class TestResolveCliModel:
-    def test_filters_gpt_models(self, tmp_path) -> None:
-        hand = _make_hand(tmp_path, model="gpt-5.2")
+    def test_filters_gpt_models(self, make_cli_hand) -> None:
+        hand = make_cli_hand(ClaudeCodeHand, model="gpt-5.2")
         assert hand._resolve_cli_model() == ""
 
-    def test_filters_gpt_case_insensitive(self, tmp_path) -> None:
-        hand = _make_hand(tmp_path, model="GPT-4o")
+    def test_filters_gpt_case_insensitive(self, make_cli_hand) -> None:
+        hand = make_cli_hand(ClaudeCodeHand, model="GPT-4o")
         assert hand._resolve_cli_model() == ""
 
     def test_preserves_claude_model(self, claude_hand) -> None:
         result = claude_hand._resolve_cli_model()
         assert result == "claude-sonnet-4-5"
 
-    def test_empty_model_returns_empty(self, tmp_path) -> None:
-        hand = _make_hand(tmp_path, model="default")
+    def test_empty_model_returns_empty(self, make_cli_hand) -> None:
+        hand = make_cli_hand(ClaudeCodeHand, model="default")
         # _DEFAULT_MODEL is "" so super() should return "" for "default"
         result = hand._resolve_cli_model()
         assert result == "" or result == "default"

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -22,3 +24,22 @@ def repo_index(tmp_path: Path) -> RepoIndex:
 def fake_config(tmp_path: Path) -> Config:
     """A Config pointing at tmp_path with a test model."""
     return Config(repo=str(tmp_path), model="test-model")
+
+
+@pytest.fixture()
+def make_cli_hand(tmp_path: Path) -> Callable[..., Any]:
+    """Factory fixture for CLI hand instances backed by tmp_path.
+
+    Usage::
+
+        def test_something(make_cli_hand):
+            hand = make_cli_hand(ClaudeCodeHand, model="claude-sonnet-4-5")
+    """
+
+    def _factory(hand_cls: type, model: str = "test-model") -> Any:
+        (tmp_path / "main.py").write_text("")
+        config = Config(repo=str(tmp_path), model=model)
+        ri = RepoIndex.from_path(tmp_path)
+        return hand_cls(config=config, repo_index=ri)
+
+    return _factory
