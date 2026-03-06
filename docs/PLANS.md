@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v39](exec-plans/completed/docs-and-testing-v39.md) --
+  CLI hand `_invoke_cli_with_cmd` subprocess error path tests (FileNotFoundError with/without fallback, npx retry, stdout None, non-zero exit with/without retry, idle timeout, verbose mode); `BasicAtomicHand.run()` interrupted/max_iterations status paths; ARCHITECTURE.md updated with task result normalization and skill catalog sections; QUALITY_SCORE.md updated; 1378 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v38](exec-plans/completed/docs-and-testing-v38.md) --
   Package-level re-export tests for `cli/__init__.py` (7 symbols, identity checks), `meta/tools/__init__.py` (21 symbols, identity across 4 submodules), `meta/__init__.py` (`skills`/`tools` identity), `hands/v1/__init__.py` (10 symbols, identity with hand package); meta tools layer pattern added to DESIGN.md; `default_prompts.py`, `cli/__init__.py`, `meta/tools/__init__.py`, `meta/__init__.py`, `hands/v1/__init__.py` added to QUALITY_SCORE.md; 1365 tests pass (completed 2026-03-06)
 

@@ -203,6 +203,21 @@ IDE sends MCP tool call (e.g., "build_repo")
                      └─────────────┘
 ```
 
+### 6. Task result normalization
+
+Celery can return non-dict objects (including exception instances) for failed
+tasks. `task_result.py` normalizes all results into JSON-serializable dicts
+before API surfaces return them. This prevents leaking Python objects through
+the REST/MCP boundary.
+
+### 7. Skill catalog
+
+Skills (`meta/skills/`) are composable knowledge bundles (Markdown files)
+injected into hand prompts via `--skills`. Unlike tools (callable capabilities),
+skills carry no executable code — they are pure knowledge artifacts discovered
+from `catalog/*.md` at import time. CLI hands stage selected skill files into
+a temporary directory during execution and clean up afterward.
+
 ## Design principles
 
 - **Plain data between layers** — Dicts/dataclasses, not tight coupling

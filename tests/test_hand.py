@@ -1318,6 +1318,58 @@ class TestBasicAtomicHand:
         assert mock_agent.run.call_count == 1
 
     @patch.object(BasicAtomicHand, "_build_agent")
+    def test_run_interrupted_status(
+        self,
+        mock_build: MagicMock,
+        config: Config,
+        repo_index: RepoIndex,
+    ) -> None:
+        """When interrupted after first iteration, run() returns interrupted."""
+        hand_ref: list[BasicAtomicHand] = []
+
+        def _run_then_interrupt(step_input: Any) -> Any:
+            hand_ref[0].interrupt()
+            resp = MagicMock()
+            resp.chat_message = "Working.\nSATISFIED: no"
+            return resp
+
+        mock_agent = MagicMock()
+        mock_agent.run.side_effect = _run_then_interrupt
+        mock_build.return_value = mock_agent
+
+        hand = BasicAtomicHand(config, repo_index, max_iterations=3)
+        hand._input_schema = _FakeInputSchema
+        hand_ref.append(hand)
+        resp = hand.run("do something")
+
+        assert resp.metadata["status"] == "interrupted"
+        assert resp.metadata["interrupted"] == "true"
+        assert mock_agent.run.call_count == 1
+
+    @patch.object(BasicAtomicHand, "_build_agent")
+    def test_run_max_iterations_status(
+        self,
+        mock_build: MagicMock,
+        config: Config,
+        repo_index: RepoIndex,
+    ) -> None:
+        """When all iterations run without SATISFIED, status is max_iterations."""
+        never_satisfied = MagicMock()
+        never_satisfied.chat_message = "Still working.\nSATISFIED: no"
+        mock_agent = MagicMock()
+        mock_agent.run.return_value = never_satisfied
+        mock_build.return_value = mock_agent
+
+        hand = BasicAtomicHand(config, repo_index, max_iterations=2)
+        hand._input_schema = _FakeInputSchema
+        resp = hand.run("implement feature")
+
+        assert resp.metadata["status"] == "max_iterations"
+        assert resp.metadata["iterations"] == 2
+        assert resp.metadata["interrupted"] == "false"
+        assert mock_agent.run.call_count == 2
+
+    @patch.object(BasicAtomicHand, "_build_agent")
     def test_stream_interrupts(
         self,
         mock_build: MagicMock,
