@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v73](exec-plans/completed/docs-and-testing-v73.md) --
+  PR description design doc; extended docs structure validation tests (ARCHITECTURE.md key paths, AGENTS.md sections, docs/index.md link resolution, CLAUDE.md sections; 17 new); 1619 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v72](exec-plans/completed/docs-and-testing-v72.md) --
   GitHub client design doc; extended docs structure validation tests (API docs link validity, completed plan structure, design-docs index count; 7 new); 1602 tests pass (completed 2026-03-06)
 

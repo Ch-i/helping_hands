@@ -18,6 +18,7 @@ Index of design documents for helping_hands.
 - [CI Pipeline](ci-pipeline.md) — GitHub Actions workflows, matrix strategy, coverage, and docs deployment
 - [Skills System](skills-system.md) — Catalog discovery, normalization, staging, and prompt injection
 - [GitHub Client](github-client.md) — Authentication, clone/branch/PR lifecycle, and token safety
+- [PR Description](pr-description.md) — Generation flow, prompt engineering, parsing, fallback chain, and env config
 
 ## Adding a design doc
 

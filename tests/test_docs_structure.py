@@ -288,3 +288,163 @@ class TestDesignDocsIndexCount:
             f"design-docs/index.md has {len(linked)} links "
             f"but {len(doc_files)} .md files exist (excluding index.md)"
         )
+
+
+class TestArchitectureMdKeyPaths:
+    """ARCHITECTURE.md key file paths should point to existing source files."""
+
+    @pytest.fixture()
+    def arch_text(self) -> str:
+        return (REPO_ROOT / "ARCHITECTURE.md").read_text()
+
+    def test_key_file_paths_exist(self, arch_text: str) -> None:
+        """Every path in the Key file paths table must resolve to a real file."""
+        # Extract paths like `src/helping_hands/lib/config.py`
+        paths = re.findall(r"`(src/helping_hands/[^`]+\.py)`", arch_text)
+        assert len(paths) > 0, "ARCHITECTURE.md should list key file paths"
+        for rel_path in paths:
+            full = REPO_ROOT / rel_path
+            assert full.is_file(), (
+                f"ARCHITECTURE.md references '{rel_path}' but the file does not exist"
+            )
+
+    def test_hand_backend_table_modules_exist(self, arch_text: str) -> None:
+        """Every module in the Hand backends table must exist."""
+        # Extract the Hand backends table section
+        in_table = False
+        hand_modules: list[str] = []
+        for line in arch_text.splitlines():
+            if "## Hand backends" in line or "### 3. Hand backends" in line:
+                in_table = True
+                continue
+            if in_table and line.startswith("###") and "Hand" not in line:
+                break
+            if in_table and line.startswith("|") and "---" not in line:
+                # Extract backticked module names like `e2e.py`, `cli/codex.py`
+                mods = re.findall(r"`((?:cli/)?[a-z_]+\.py)`", line)
+                hand_modules.extend(mods)
+        hand_dir = REPO_ROOT / "src" / "helping_hands" / "lib" / "hands" / "v1" / "hand"
+        assert len(hand_modules) > 0, (
+            "ARCHITECTURE.md hand backends table should have module references"
+        )
+        for mod in hand_modules:
+            full = hand_dir / mod
+            assert full.is_file(), (
+                f"ARCHITECTURE.md hand table references '{mod}' "
+                f"but no file at {full.relative_to(REPO_ROOT)}"
+            )
+
+
+class TestAgentsMdSections:
+    """AGENTS.md must have required structural sections."""
+
+    @pytest.fixture()
+    def agents_text(self) -> str:
+        return (REPO_ROOT / "AGENTS.md").read_text()
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "## Agent types",
+            "## Coordination rules",
+            "## Sandbox isolation",
+            "## Scheduled agents",
+            "## Communication between agents",
+        ],
+    )
+    def test_required_section_exists(self, agents_text: str, section: str) -> None:
+        assert section in agents_text, (
+            f"AGENTS.md is missing required section '{section}'"
+        )
+
+    def test_agent_type_table_has_entries(self, agents_text: str) -> None:
+        """The Agent types section should have a table with at least 3 rows."""
+        # Find table rows (lines starting with |, excluding header separator)
+        in_types = False
+        rows = 0
+        for line in agents_text.splitlines():
+            if "## Agent types" in line:
+                in_types = True
+                continue
+            if in_types and line.startswith("##"):
+                break
+            if in_types and line.startswith("|") and "---" not in line:
+                rows += 1
+        # Subtract header row
+        data_rows = rows - 1 if rows > 0 else 0
+        assert data_rows >= 3, (
+            f"AGENTS.md Agent types table has {data_rows} data rows, expected >= 3"
+        )
+
+
+class TestDocsIndexLinkResolution:
+    """docs/index.md documentation map links must resolve to actual files."""
+
+    @pytest.fixture()
+    def index_text(self) -> str:
+        return (DOCS_DIR / "index.md").read_text()
+
+    def test_documentation_map_links_resolve(self, index_text: str) -> None:
+        """Every relative link in the documentation map table must exist."""
+        # Match links like (DESIGN.md), (../ARCHITECTURE.md), (design-docs/index.md)
+        links = re.findall(r"\((\.\./[^)]+|[^)]+\.md)\)", index_text)
+        assert len(links) > 0, "docs/index.md should have links in documentation map"
+        for link in links:
+            # Resolve relative to docs/
+            target = REPO_ROOT / link[3:] if link.startswith("../") else DOCS_DIR / link
+            assert target.exists(), (
+                f"docs/index.md references '{link}' but the target does not exist"
+            )
+
+    def test_documentation_map_has_minimum_entries(self, index_text: str) -> None:
+        """The documentation map table should have at least 8 entries."""
+        # Count table data rows in the Documentation map section
+        in_map = False
+        rows = 0
+        for line in index_text.splitlines():
+            if "## Documentation map" in line:
+                in_map = True
+                continue
+            if in_map and line.startswith("##"):
+                break
+            if in_map and line.startswith("|") and "---" not in line:
+                rows += 1
+        data_rows = rows - 1 if rows > 0 else 0
+        assert data_rows >= 8, (
+            f"docs/index.md documentation map has {data_rows} rows, expected >= 8"
+        )
+
+
+class TestClaudeMdSections:
+    """CLAUDE.md must have required structural sections."""
+
+    @pytest.fixture()
+    def claude_text(self) -> str:
+        return (REPO_ROOT / "CLAUDE.md").read_text()
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "## Build & Development Commands",
+            "## Architecture",
+            "## Code Conventions",
+            "## Key Architectural Decisions",
+            "## CI",
+        ],
+    )
+    def test_required_section_exists(self, claude_text: str, section: str) -> None:
+        assert section in claude_text, (
+            f"CLAUDE.md is missing required section '{section}'"
+        )
+
+    def test_has_install_command(self, claude_text: str) -> None:
+        """CLAUDE.md should document the uv sync install command."""
+        assert "uv sync" in claude_text, (
+            "CLAUDE.md should contain 'uv sync' install command"
+        )
+
+    def test_has_test_command(self, claude_text: str) -> None:
+        """CLAUDE.md should document the pytest test command."""
+        assert "uv run pytest" in claude_text, (
+            "CLAUDE.md should contain 'uv run pytest' test command"
+        )
