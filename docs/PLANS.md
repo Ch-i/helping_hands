@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v58](exec-plans/completed/docs-and-testing-v58.md) --
+  Close claude.py `_StreamJsonEmitter` branch gaps (unknown content block type, whitespace-only text preview) and `_skip_permissions_enabled` geteuid-not-callable path; add skills `normalize_skill_selection` whitespace-only token test; fix stale `server/__init__.py` docstring; add error recovery patterns to DESIGN.md; claude.py 99%+; all tests pass (completed 2026-03-06)
+
 - [Docs and Testing v57](exec-plans/completed/docs-and-testing-v57.md) --
   Close atomic.py `stream()` non-AssertionError exception propagation gap (lines 91-92); add skill catalog pattern to DESIGN.md; add Docker sandbox reliability and async compatibility fallback patterns to RELIABILITY.md; atomic.py 97% -> 98%+; 1473 backend tests pass (completed 2026-03-06)
 

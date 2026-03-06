@@ -263,6 +263,28 @@ skills carry no executable code.  Key design choices:
   `_discover_catalog()` returns an empty dict.  Skill-related prompts are
   simply omitted when no skills are selected.
 
+### Error recovery patterns
+
+The codebase applies a consistent set of error recovery strategies across
+modules.  These are not ad-hoc — each pattern addresses a specific class of
+failure and keeps the user-facing flow moving.
+
+| Pattern | Where used | Behavior |
+|---|---|---|
+| **Exception suppression with fallback** | `_update_pr_description`, `_skip_permissions_enabled` | Wrap optional enhancement in `try/except`; on failure, silently fall back to a simpler path instead of crashing the overall operation |
+| **Retry with modified command** | `_retry_command_after_failure` (Claude root error, Gemini model-not-found) | On specific CLI errors, re-invoke with a modified command (e.g. strip `--dangerously-skip-permissions`, drop `--model`) rather than failing immediately |
+| **Fallback command** | `_fallback_command_when_not_found` (Claude `npx` fallback) | When the primary CLI binary is missing (`FileNotFoundError`), try an alternative command before giving up |
+| **Graceful degradation** | `_discover_catalog` (empty dir), `_check_*_health` probes, `_has_*_auth` checks | Return a safe default (empty dict, `"error"`, `False`) when optional dependencies or resources are unavailable, rather than raising |
+| **Default branch fallback** | `_finalize_repo_pr` | When the remote API fails to provide the default branch, fall back to `_default_base_branch()` (`"main"`) |
+| **Platform capability detection** | `_skip_permissions_enabled` (`os.geteuid`) | Use `getattr` + `callable` checks before invoking platform-specific APIs; gracefully degrade on platforms where the API is absent |
+| **Idle timeout with heartbeat** | CLI IO loop (`_invoke_cli_with_cmd`) | Emit periodic heartbeat messages during long-running subprocesses; terminate only after a configurable idle threshold, not on first silence |
+| **Async fallback chains** | `BasicAtomicHand.stream()` | Try `async for`, then `await`, then sync `run()` — three progressively simpler execution paths for agent output that may or may not be async |
+
+Guiding principle: **fail narrowly, not broadly**.  A failure in PR description
+generation should not prevent the commit.  A missing health check dependency
+should not crash the server.  Each recovery boundary is placed at the narrowest
+scope where the failure can be contained.
+
 ## Anti-patterns to avoid
 
 - **Global state** — No module-level caches or singletons

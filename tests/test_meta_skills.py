@@ -79,6 +79,11 @@ class TestMetaSkills:
     def test_format_skill_catalog_instructions_empty(self) -> None:
         assert meta_skills.format_skill_catalog_instructions((), None) == ""
 
+    def test_normalize_skill_selection_whitespace_only_token_skipped(self) -> None:
+        """Whitespace-only tokens (empty after strip) are dropped."""
+        result = meta_skills.normalize_skill_selection("execution, , ,web")
+        assert result == ("execution", "web")
+
     def test_normalize_skill_selection_non_string_item_raises(self) -> None:
         """A list containing a non-string item should raise ValueError."""
         with pytest.raises(ValueError, match="skills must contain only strings"):

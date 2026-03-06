@@ -136,6 +136,13 @@ class TestSkipPermissionsEnabled:
         monkeypatch.setattr("os.geteuid", _broken_geteuid)
         assert claude_hand._skip_permissions_enabled() is True
 
+    def test_enabled_when_geteuid_not_callable(self, claude_hand, monkeypatch) -> None:
+        monkeypatch.delenv(
+            "HELPING_HANDS_CLAUDE_DANGEROUS_SKIP_PERMISSIONS", raising=False
+        )
+        monkeypatch.delattr("os.geteuid", raising=False)
+        assert claude_hand._skip_permissions_enabled() is True
+
 
 # ---------------------------------------------------------------------------
 # _build_failure_message (instance delegation)
@@ -731,6 +738,50 @@ class TestStreamJsonEmitterEdgeCases:
         event = json.dumps({"type": "system", "data": "ignored"})
         self._run(parser(event + "\n"))
         assert emitted == []
+
+    def test_unknown_content_block_type_skipped(self) -> None:
+        """Content blocks with unknown type (not tool_use/text) are skipped."""
+        emitted: list[str] = []
+
+        async def emit(text: str) -> None:
+            emitted.append(text)
+
+        parser = _StreamJsonEmitter(emit, "test")
+        event = json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {"type": "image", "source": {"data": "base64..."}},
+                    ]
+                },
+            }
+        )
+        self._run(parser(event + "\n"))
+        # Unknown block types produce no labeled emission
+        text_emissions = [e for e in emitted if "[test]" in e]
+        assert text_emissions == []
+
+    def test_whitespace_only_text_preview_not_emitted(self) -> None:
+        """Text that is truthy but becomes empty after strip produces no emission."""
+        emitted: list[str] = []
+
+        async def emit(text: str) -> None:
+            emitted.append(text)
+
+        parser = _StreamJsonEmitter(emit, "test")
+        event = json.dumps(
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "\n\n  \n"}]},
+            }
+        )
+        self._run(parser(event + "\n"))
+        # Text is truthy ("\n\n  \n") but after strip/replace it becomes ""
+        text_emissions = [e for e in emitted if "[test]" in e]
+        assert text_emissions == []
+        # The text should still be captured in _text_parts
+        assert len(parser._text_parts) == 1
 
     def test_empty_lines_between_events_skipped(self) -> None:
         """Lines that are blank after stripping should be silently skipped."""
