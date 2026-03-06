@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -897,6 +898,104 @@ def _make_atomic_hand(tmp_path, *, max_iterations=2):
         hand = BasicAtomicHand(config, repo_index, max_iterations=max_iterations)
     hand._input_schema = type("FakeInput", (), {"__init__": lambda s, **kw: None})
     return hand, mock_agent
+
+
+# ---------------------------------------------------------------------------
+# BasicLangGraphHand._build_agent — coverage for lines 507-518
+# ---------------------------------------------------------------------------
+
+
+class TestBasicLangGraphHandBuildAgent:
+    def test_build_agent_calls_create_react_agent(self, tmp_path) -> None:
+        """_build_agent should import langgraph and build a react agent."""
+        (tmp_path / "main.py").write_text("")
+        repo_index = RepoIndex.from_path(tmp_path)
+        config = Config(repo=str(tmp_path), model="openai/gpt-test")
+
+        mock_create = MagicMock(return_value=MagicMock())
+        mock_llm = MagicMock()
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "langgraph": MagicMock(),
+                    "langgraph.prebuilt": MagicMock(create_react_agent=mock_create),
+                },
+            ),
+            patch(
+                "helping_hands.lib.hands.v1.hand.iterative.build_langchain_chat_model",
+                return_value=mock_llm,
+            ),
+            patch(
+                "helping_hands.lib.hands.v1.hand.iterative.resolve_hand_model",
+                return_value=SimpleNamespace(
+                    model="gpt-test",
+                    provider=SimpleNamespace(name="openai"),
+                ),
+            ),
+        ):
+            _hand = BasicLangGraphHand(config, repo_index)
+
+        mock_create.assert_called_once()
+        call_kwargs = mock_create.call_args
+        assert call_kwargs[1]["model"] is mock_llm
+        assert call_kwargs[1]["tools"] == []
+        assert "iterative repository implementation loop" in call_kwargs[1]["prompt"]
+
+
+# ---------------------------------------------------------------------------
+# BasicAtomicHand._build_agent — coverage for lines 696-713
+# ---------------------------------------------------------------------------
+
+
+class TestBasicAtomicHandBuildAgent:
+    def test_build_agent_constructs_atomic_agent(self, tmp_path) -> None:
+        """_build_agent should import atomic_agents and build an agent."""
+        (tmp_path / "main.py").write_text("")
+        repo_index = RepoIndex.from_path(tmp_path)
+        config = Config(repo=str(tmp_path), model="openai/gpt-test")
+
+        mock_atomic_agent = MagicMock()
+        mock_config = MagicMock()
+        mock_schema = MagicMock()
+        mock_history = MagicMock()
+        mock_prompt_gen = MagicMock()
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "atomic_agents": MagicMock(
+                        AgentConfig=mock_config,
+                        AtomicAgent=mock_atomic_agent,
+                        BasicChatInputSchema=mock_schema,
+                    ),
+                    "atomic_agents.context": MagicMock(
+                        ChatHistory=MagicMock(return_value=mock_history),
+                        SystemPromptGenerator=MagicMock(return_value=mock_prompt_gen),
+                    ),
+                },
+            ),
+            patch(
+                "helping_hands.lib.hands.v1.hand.iterative.build_atomic_client",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "helping_hands.lib.hands.v1.hand.iterative.resolve_hand_model",
+                return_value=SimpleNamespace(
+                    model="gpt-test",
+                    provider=SimpleNamespace(name="openai"),
+                ),
+            ),
+        ):
+            hand = BasicAtomicHand(config, repo_index)
+
+        assert hand._input_schema is mock_schema
+        mock_atomic_agent.assert_called_once()
+        call_kwargs = mock_atomic_agent.call_args
+        agent_config = call_kwargs[1]["config"]
+        assert agent_config is mock_config.return_value
 
 
 # ---------------------------------------------------------------------------

@@ -4,6 +4,25 @@
 
 For full project details, see the [README](https://github.com/suryarastogi/helping_hands#readme).
 
+## Documentation map
+
+| Document | Purpose |
+|---|---|
+| [ARCHITECTURE.md](../ARCHITECTURE.md) | System architecture and module boundaries |
+| [AGENTS.md](../AGENTS.md) | AI agent configuration and conventions |
+| [DESIGN.md](DESIGN.md) | Internal design patterns and decisions |
+| [FRONTEND.md](FRONTEND.md) | React frontend architecture and conventions |
+| [SECURITY.md](SECURITY.md) | Security model, sandboxing, path safety |
+| [RELIABILITY.md](RELIABILITY.md) | Reliability patterns and error handling |
+| [PRODUCT_SENSE.md](PRODUCT_SENSE.md) | Product capabilities and roadmap |
+| [QUALITY_SCORE.md](QUALITY_SCORE.md) | Test coverage targets and quality gates |
+| [PLANS.md](PLANS.md) | Execution plan index (active and completed) |
+| [design-docs/](design-docs/index.md) | Design documents (core beliefs, hand abstraction, providers, two-phase CLI) |
+| [product-specs/](product-specs/index.md) | Product specifications (onboarding, etc.) |
+| [exec-plans/](exec-plans/) | Active and completed execution plans |
+| [generated/](generated/db-schema.md) | Auto-generated reference (DB schema) |
+| [references/](references/) | External reference material (uv, ruff, celery-redbeat) |
+
 ## API Reference
 
 Browse the auto-generated docs from source:
