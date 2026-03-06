@@ -97,6 +97,25 @@ against the git diff.  Key design choices:
 - **Environment-controlled** — timeout, diff limit, and disable toggle are all
   configurable via `HELPING_HANDS_*` env vars.
 
+### Scheduled task management
+
+The `schedules` module (`server/schedules.py`) provides cron-based recurring
+task execution using RedBeat for Redis-backed persistence.  Key design choices:
+
+- **Dataclass-driven** — `ScheduledTask` is a plain dataclass serialized to/from
+  JSON in Redis.  No ORM or database schema required.
+- **Dual storage** — schedule metadata lives in Redis keys
+  (`helping_hands:schedule:meta:{id}`); the actual cron trigger lives in RedBeat's
+  scheduler entries.  The two are kept in sync by `ScheduleManager` CRUD methods.
+- **Lazy dependency checks** — `redbeat` and `croniter` are optional imports
+  guarded by `_check_redbeat()` / `_check_croniter()`.  The rest of the server
+  works without them; only schedule endpoints require the extras.
+- **Cron presets** — common patterns (`daily`, `hourly`, `weekdays`, etc.) are
+  resolved from `CRON_PRESETS` before validation, so users can pass human-readable
+  names instead of raw cron strings.
+- **Trigger-now** — `trigger_now()` dispatches an immediate Celery task using the
+  schedule's saved parameters, recording the run in metadata.
+
 ### Finalization
 
 Commit/push/PR logic is centralized in the `Hand` base class so all backends
