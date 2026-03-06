@@ -1066,6 +1066,75 @@ class TestBasicLangGraphHandStream:
 
 
 # ---------------------------------------------------------------------------
+# BasicLangGraphHand.run() — coverage for max_iterations status (line 577)
+# ---------------------------------------------------------------------------
+
+
+class TestBasicLangGraphHandRun:
+    def test_run_max_iterations_status(self, tmp_path) -> None:
+        """run() returns status='max_iterations' when agent never satisfies."""
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=1)
+
+        msg = MagicMock()
+        msg.content = "Working on it.\nSATISFIED: no"
+        mock_agent.invoke.return_value = {"messages": [msg]}
+
+        with patch.object(hand, "_finalize_repo_pr", return_value={}):
+            resp = hand.run("task")
+
+        assert resp.metadata["status"] == "max_iterations"
+        assert resp.metadata["iterations"] == 1
+
+    def test_run_max_iterations_with_pr_url(self, tmp_path) -> None:
+        """run() includes PR URL in metadata when created at max iterations."""
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=1)
+
+        msg = MagicMock()
+        msg.content = "Partial.\nSATISFIED: no"
+        mock_agent.invoke.return_value = {"messages": [msg]}
+
+        with patch.object(
+            hand,
+            "_finalize_repo_pr",
+            return_value={"pr_url": "https://github.com/test/pr/1"},
+        ):
+            resp = hand.run("task")
+
+        assert resp.metadata["pr_url"] == "https://github.com/test/pr/1"
+        assert resp.metadata["status"] == "max_iterations"
+
+
+# ---------------------------------------------------------------------------
+# BasicLangGraphHand.stream() — pr_url at max iterations (line 674)
+# ---------------------------------------------------------------------------
+
+
+class TestBasicLangGraphHandStreamPrUrl:
+    def test_stream_max_iterations_with_pr_url(self, tmp_path) -> None:
+        """stream() yields 'PR created' when pr_url present at max iterations."""
+        hand, mock_agent = _make_langgraph_hand(tmp_path, max_iterations=1)
+
+        chunk = MagicMock()
+        chunk.content = "Partial.\nSATISFIED: no"
+
+        async def _fake_events(*args, **kwargs):
+            yield {"event": "on_chat_model_stream", "data": {"chunk": chunk}}
+
+        mock_agent.astream_events = _fake_events
+
+        with patch.object(
+            hand,
+            "_finalize_repo_pr",
+            return_value={"pr_url": "https://github.com/test/pr/1"},
+        ):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "PR created: https://github.com/test/pr/1" in text
+        assert "Max iterations reached." in text
+
+
+# ---------------------------------------------------------------------------
 # BasicAtomicHand.stream() — coverage for lines 795-900
 # ---------------------------------------------------------------------------
 
@@ -1348,3 +1417,28 @@ class TestBasicAtomicHandStream:
         text = "".join(chunks)
         assert "[tool results]" in text
         assert "main.py contents" in text
+
+
+class TestBasicAtomicHandStreamPrUrl:
+    def test_stream_max_iterations_with_pr_url(self, tmp_path) -> None:
+        """stream() yields 'PR created' when pr_url present at max iterations (line 897)."""
+        hand, mock_agent = _make_atomic_hand(tmp_path, max_iterations=1)
+
+        partial = MagicMock()
+        partial.chat_message = "Partial.\nSATISFIED: no"
+
+        async def _fake_run_async(_input):
+            yield partial
+
+        mock_agent.run_async = _fake_run_async
+
+        with patch.object(
+            hand,
+            "_finalize_repo_pr",
+            return_value={"pr_url": "https://github.com/test/pr/2"},
+        ):
+            chunks = asyncio.run(_collect_stream(hand, "task"))
+
+        text = "".join(chunks)
+        assert "PR created: https://github.com/test/pr/2" in text
+        assert "Max iterations reached." in text

@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v42](exec-plans/completed/docs-and-testing-v42.md) --
+  `_build_tree_snapshot` empty-normalized/slash-only edge cases; `BasicLangGraphHand.run()` max_iterations status and pr_url; LangGraph/Atomic `stream()` pr_url yield at max iterations; `_effective_container_env_names` empty-blocked early return; iterative.py 94% -> 96%; QUALITY_SCORE.md updated; 1404 tests pass (completed 2026-03-06)
+
 - [Docs and Testing v41](exec-plans/completed/docs-and-testing-v41.md) --
   Top-level `__version__` accessibility test; cli/main.py coverage gaps (docker-sandbox-claude backend branch, `_stream_hand` chunk printing/trailing newline, Python <3.12 atomic error, generic exception re-raise for non-CLI backends); SECURITY.md updated with Docker sandbox microVM isolation section; QUALITY_SCORE.md updated; 1397 tests pass (completed 2026-03-06)
 
