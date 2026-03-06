@@ -11,6 +11,7 @@ Index of design documents for helping_hands.
 - [Testing Methodology](testing-methodology.md) — Coverage-guided iteration, test patterns, and dead code documentation
 - [Error Handling](error-handling.md) — Recovery patterns, fallback chains, and narrow failure boundaries
 - [MCP Architecture](mcp-architecture.md) — Tool registration, transport selection, and repo isolation
+- [Config Loading](config-loading.md) — Env loading precedence, dotenv, normalization, and frozen config
 
 ## Adding a design doc
 

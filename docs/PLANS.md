@@ -8,6 +8,10 @@ _No active plans._
 
 ## Completed plans
 
+- [Docs and Testing v66](exec-plans/completed/docs-and-testing-v66.md) --
+  Refactor test_config.py to monkeypatch; add Config frozen/dotenv/verbose tests (5 new); add config-loading design doc; 1519 tests pass (completed 2026-03-06)
+
+
 - [Docs and Testing v65](exec-plans/completed/docs-and-testing-v65.md) --
   Web dataclass construction and _decode_bytes edge case tests (19 tests); MCP architecture design doc; updated testing methodology stats; 1514 tests pass (completed 2026-03-06)
 
