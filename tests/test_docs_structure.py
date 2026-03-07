@@ -2525,3 +2525,236 @@ class TestActivePlanStructure:
             assert "completion" in text.lower() or "criteria" in text.lower(), (
                 f"Active plan '{plan.name}' missing completion criteria"
             )
+
+
+class TestSecurityMdIterativeHandSecurity:
+    """SECURITY.md must document iterative hand security boundaries."""
+
+    @pytest.fixture()
+    def security_text(self) -> str:
+        return (DOCS_DIR / "SECURITY.md").read_text()
+
+    def test_iterative_hand_security_section_exists(
+        self, security_text: str
+    ) -> None:
+        assert "## Iterative hand security boundaries" in security_text, (
+            "SECURITY.md is missing '## Iterative hand security boundaries' section"
+        )
+
+    @pytest.mark.parametrize(
+        "subsection",
+        [
+            "### BasicLangGraphHand",
+            "No subprocess sandboxing",
+            "Tool dispatch",
+            "Network access",
+            "Context window",
+        ],
+    )
+    def test_iterative_security_subsections(
+        self, security_text: str, subsection: str
+    ) -> None:
+        section = security_text.split("## Iterative hand security boundaries")[1]
+        assert subsection in section, (
+            f"SECURITY.md iterative hand section missing '{subsection}'"
+        )
+
+    def test_mitigation_recommendation(self, security_text: str) -> None:
+        """Should recommend running iterative hands inside Docker."""
+        section = security_text.split("## Iterative hand security boundaries")[1]
+        assert "docker" in section.lower(), (
+            "SECURITY.md iterative section should recommend Docker isolation"
+        )
+
+
+class TestReliabilityMdTestPatterns:
+    """RELIABILITY.md should document test-level error handling patterns."""
+
+    @pytest.fixture()
+    def reliability_text(self) -> str:
+        return (DOCS_DIR / "RELIABILITY.md").read_text()
+
+    def test_test_level_section_exists(self, reliability_text: str) -> None:
+        assert "## Test-level error handling patterns" in reliability_text, (
+            "RELIABILITY.md is missing '## Test-level error handling patterns'"
+        )
+
+    @pytest.mark.parametrize(
+        "subsection",
+        [
+            "### Testing pure helpers in isolation",
+            "### Dataclass invariants",
+            "### Subprocess mocking",
+            "### Security boundary tests",
+        ],
+    )
+    def test_test_pattern_subsections(
+        self, reliability_text: str, subsection: str
+    ) -> None:
+        assert subsection in reliability_text, (
+            f"RELIABILITY.md is missing test pattern subsection '{subsection}'"
+        )
+
+    def test_mentions_mocking(self, reliability_text: str) -> None:
+        """Test patterns section should mention mocking as an isolation technique."""
+        section = reliability_text.split("## Test-level error handling patterns")[1]
+        assert "mock" in section.lower(), (
+            "RELIABILITY.md test patterns should mention mocking"
+        )
+
+
+class TestDesignMdAntiPatterns:
+    """DESIGN.md anti-patterns section should cover key concerns."""
+
+    @pytest.fixture()
+    def design_text(self) -> str:
+        return (DOCS_DIR / "DESIGN.md").read_text()
+
+    def test_anti_patterns_section_exists(self, design_text: str) -> None:
+        assert "## Anti-patterns to avoid" in design_text, (
+            "DESIGN.md is missing '## Anti-patterns to avoid' section"
+        )
+
+    @pytest.mark.parametrize(
+        "keyword",
+        ["Global state", "Cross-layer imports", "Monolithic", "Implicit auth"],
+    )
+    def test_anti_pattern_keywords(self, design_text: str, keyword: str) -> None:
+        section = design_text.split("## Anti-patterns to avoid")[1]
+        assert keyword.lower() in section.lower(), (
+            f"DESIGN.md anti-patterns section missing keyword '{keyword}'"
+        )
+
+    def test_anti_patterns_have_list_items(self, design_text: str) -> None:
+        """Anti-patterns section should list at least 3 items."""
+        section = design_text.split("## Anti-patterns to avoid")[1]
+        items = [ln for ln in section.splitlines() if ln.strip().startswith("- **")]
+        assert len(items) >= 3, (
+            f"DESIGN.md anti-patterns has {len(items)} items, expected >= 3"
+        )
+
+
+class TestTestingMethodologyCoverageTable:
+    """testing-methodology.md coverage table should have valid data."""
+
+    @pytest.fixture()
+    def methodology_text(self) -> str:
+        return (DOCS_DIR / "design-docs" / "testing-methodology.md").read_text()
+
+    def test_coverage_table_exists(self, methodology_text: str) -> None:
+        assert "## Coverage targets" in methodology_text, (
+            "testing-methodology.md is missing '## Coverage targets' section"
+        )
+
+    def test_coverage_table_has_backend_entry(self, methodology_text: str) -> None:
+        """Should have a Backend (overall) row with test count."""
+        assert re.search(r"Backend.*\d+ tests", methodology_text), (
+            "testing-methodology.md coverage table missing Backend test count"
+        )
+
+    def test_coverage_table_has_frontend_entry(self, methodology_text: str) -> None:
+        """Should have a Frontend row with percentage."""
+        assert re.search(r"Frontend.*\d+(\.\d+)?%", methodology_text), (
+            "testing-methodology.md coverage table missing Frontend percentage"
+        )
+
+    def test_anti_patterns_section_exists(self, methodology_text: str) -> None:
+        assert "## Anti-patterns" in methodology_text, (
+            "testing-methodology.md is missing '## Anti-patterns' section"
+        )
+
+    def test_anti_patterns_has_items(self, methodology_text: str) -> None:
+        """Anti-patterns section should list at least 3 items."""
+        section = methodology_text.split("## Anti-patterns")[1]
+        items = [ln for ln in section.splitlines() if ln.strip().startswith("- **")]
+        assert len(items) >= 3, (
+            f"testing-methodology.md anti-patterns has {len(items)} items, expected >= 3"
+        )
+
+
+class TestClaudeMdArchitectureSubsections:
+    """CLAUDE.md Architecture section should reference key concepts."""
+
+    @pytest.fixture()
+    def claude_text(self) -> str:
+        return (REPO_ROOT / "CLAUDE.md").read_text()
+
+    def test_architecture_mentions_hand_abstraction(self, claude_text: str) -> None:
+        arch_section = claude_text.split("## Architecture")[1].split("## Code")[0]
+        assert "hand" in arch_section.lower(), (
+            "CLAUDE.md Architecture section should mention the Hand abstraction"
+        )
+
+    def test_architecture_mentions_providers(self, claude_text: str) -> None:
+        arch_section = claude_text.split("## Architecture")[1].split("## Code")[0]
+        assert "provider" in arch_section.lower(), (
+            "CLAUDE.md Architecture section should mention providers"
+        )
+
+    def test_architecture_mentions_module_boundaries(self, claude_text: str) -> None:
+        arch_section = claude_text.split("## Architecture")[1].split("## Code")[0]
+        assert "module boundaries" in arch_section.lower() or "### Module" in arch_section, (
+            "CLAUDE.md Architecture should discuss module boundaries"
+        )
+
+    def test_architecture_mentions_filesystem_tools(self, claude_text: str) -> None:
+        arch_section = claude_text.split("## Architecture")[1].split("## Code")[0]
+        assert "filesystem" in arch_section.lower(), (
+            "CLAUDE.md Architecture should mention filesystem tool isolation"
+        )
+
+
+class TestDocsIndexCliExamples:
+    """docs/index.md should have CLI examples covering key backends."""
+
+    @pytest.fixture()
+    def index_text(self) -> str:
+        return (DOCS_DIR / "index.md").read_text()
+
+    def test_cli_examples_section_exists(self, index_text: str) -> None:
+        assert "## CLI examples" in index_text, (
+            "docs/index.md is missing '## CLI examples' section"
+        )
+
+    @pytest.mark.parametrize(
+        "backend",
+        [
+            "basic-langgraph",
+            "codexcli",
+            "claudecodecli",
+            "goose",
+            "geminicli",
+            "e2e",
+        ],
+    )
+    def test_cli_example_covers_backend(self, index_text: str, backend: str) -> None:
+        section = index_text.split("## CLI examples")[1]
+        # Stop at next h2
+        if "\n## " in section:
+            section = section.split("\n## ")[0]
+        assert backend in section, (
+            f"docs/index.md CLI examples missing backend '{backend}'"
+        )
+
+
+class TestDesignMdPatternSubsections:
+    """DESIGN.md Patterns section should cover all major subsystems."""
+
+    @pytest.fixture()
+    def design_text(self) -> str:
+        return (DOCS_DIR / "DESIGN.md").read_text()
+
+    @pytest.mark.parametrize(
+        "heading",
+        [
+            "### Skill catalog",
+            "### PR description",
+            "### Scheduled task management",
+            "### Health checks",
+            "### GitHub client abstraction",
+        ],
+    )
+    def test_pattern_subsection_exists(self, design_text: str, heading: str) -> None:
+        assert heading in design_text, (
+            f"DESIGN.md is missing pattern subsection '{heading}'"
+        )
