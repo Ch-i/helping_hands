@@ -4983,9 +4983,7 @@ class TestBackendRoutingDesignDocContent:
 
     @pytest.mark.parametrize("ref", REQUIRED_REFS)
     def test_key_reference(self, content: str, ref: str) -> None:
-        assert ref in content, (
-            f"backend-routing.md should reference: {ref}"
-        )
+        assert ref in content, f"backend-routing.md should reference: {ref}"
 
     def test_hand_table_present(self, content: str) -> None:
         """Should include a backend-to-Hand mapping table."""
@@ -4995,12 +4993,14 @@ class TestBackendRoutingDesignDocContent:
     def test_hand_table_row_count(self, content: str) -> None:
         """Mapping table should list at least 9 backends."""
         table_lines = [
-            ln for ln in content.splitlines()
+            ln
+            for ln in content.splitlines()
             if ln.strip().startswith("|") and "Hand" not in ln.split("|")[1]
         ]
         # Exclude header and separator rows
         data_rows = [
-            ln for ln in table_lines
+            ln
+            for ln in table_lines
             if not set(ln.replace("|", "").strip()).issubset({"-", " "})
             and "Backend name" not in ln
             and "Module" not in ln
@@ -5152,9 +5152,7 @@ class TestDocsIndexDesignDocsCompleteness:
     def design_doc_names(self) -> list[str]:
         dd = DOCS_DIR / "design-docs"
         return sorted(
-            f.stem.replace("-", " ")
-            for f in dd.glob("*.md")
-            if f.name != "index.md"
+            f.stem.replace("-", " ") for f in dd.glob("*.md") if f.name != "index.md"
         )
 
     def test_all_design_docs_in_parenthetical(
@@ -5202,9 +5200,7 @@ class TestArchitectureMdBackendListing:
 
     @pytest.mark.parametrize("backend", EXPECTED_BACKENDS)
     def test_backend_mentioned(self, content: str, backend: str) -> None:
-        assert backend in content, (
-            f"ARCHITECTURE.md should mention backend: {backend}"
-        )
+        assert backend in content, f"ARCHITECTURE.md should mention backend: {backend}"
 
 
 # ---------------------------------------------------------------------------
