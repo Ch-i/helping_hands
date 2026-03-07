@@ -218,6 +218,9 @@ uv run helping-hands "suryarastogi/helping_hands" --backend goose --prompt "Impl
 # geminicli
 uv run helping-hands "suryarastogi/helping_hands" --backend geminicli --prompt "Implement one small safe improvement"
 
+# opencodecli
+uv run helping-hands "suryarastogi/helping_hands" --backend opencodecli --prompt "Implement one small safe improvement"
+
 # e2e (new PR)
 uv run helping-hands "suryarastogi/helping_hands" --e2e --prompt "CI integration run: update PR on master"
 

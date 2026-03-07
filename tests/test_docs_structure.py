@@ -1896,7 +1896,7 @@ class TestSourceToTestMapping:
         "main.py",  # CLI entry point — tested via test_cli.py
         "placeholders.py",  # backward compat shim — tested via test_placeholders.py
         "anthropic.py",  # tested via test_ai_providers.py and test_provider_build_inner.py
-        "litellm.py",  # tested via test_ai_providers.py and test_provider_build_inner.py
+        "litellm.py",  # tested via test_litellm_provider.py, test_ai_providers.py, test_provider_build_inner.py
         "types.py",  # tested via test_ai_providers.py (AIProvider base, normalize_messages)
     }
 
@@ -6946,3 +6946,234 @@ class TestProductSenseMdCompleteness:
     def test_mentions_all_run_modes(self, content: str) -> None:
         for mode in ["CLI", "server", "MCP"]:
             assert mode in content, f"PRODUCT_SENSE.md should mention run mode: {mode}"
+
+
+class TestSourceToTestDedicatedProviderFiles:
+    """Every AI provider module should have a dedicated test file."""
+
+    _PROVIDER_MODULES: ClassVar[list[str]] = [
+        "openai",
+        "google",
+        "ollama",
+        "litellm",
+    ]
+
+    @pytest.fixture()
+    def test_files(self) -> set[str]:
+        tests_dir = REPO_ROOT / "tests"
+        return {f.name for f in tests_dir.glob("test_*.py")}
+
+    @pytest.mark.parametrize("provider", _PROVIDER_MODULES)
+    def test_provider_has_dedicated_test_file(
+        self, provider: str, test_files: set[str]
+    ) -> None:
+        matches = [f for f in test_files if provider in f and "provider" in f]
+        assert len(matches) >= 1, (
+            f"Provider '{provider}' should have a dedicated test file "
+            f"matching 'test_*{provider}*provider*.py'"
+        )
+
+
+class TestDesignDocsIndexCategoryStructure:
+    """Design docs index should maintain organized categories with entries."""
+
+    _EXPECTED_CATEGORIES: ClassVar[list[str]] = [
+        "Core",
+        "Hands",
+        "Providers and Models",
+        "Tools and Skills",
+        "Infrastructure",
+        "Quality",
+    ]
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "index.md").read_text()
+
+    @pytest.mark.parametrize("category", _EXPECTED_CATEGORIES)
+    def test_category_exists(self, category: str, content: str) -> None:
+        assert f"## {category}" in content, (
+            f"design-docs/index.md should have category: {category}"
+        )
+
+    def test_each_category_has_entries(self, content: str) -> None:
+        for category in self._EXPECTED_CATEGORIES:
+            # Find content between this category and next ## heading (or EOF)
+            pattern = rf"## {re.escape(category)}\n(.*?)(?=\n## |\Z)"
+            match = re.search(pattern, content, re.DOTALL)
+            assert match is not None, f"Category '{category}' section not found"
+            section = match.group(1)
+            links = re.findall(r"\[.*?\]\(.*?\.md\)", section)
+            assert len(links) >= 1, (
+                f"Category '{category}' should have at least one design doc entry"
+            )
+
+    def test_minimum_design_doc_count(self, content: str) -> None:
+        all_links = re.findall(r"\[.*?\]\(.*?\.md\)", content)
+        assert len(all_links) >= 25, (
+            f"Expected at least 25 design doc links, found {len(all_links)}"
+        )
+
+
+class TestTestFileNamingConvention:
+    """Test files should follow naming conventions."""
+
+    @pytest.fixture()
+    def test_files(self) -> list[Path]:
+        tests_dir = REPO_ROOT / "tests"
+        return sorted(tests_dir.glob("test_*.py"))
+
+    def test_all_test_files_start_with_test_prefix(
+        self, test_files: list[Path]
+    ) -> None:
+        for f in test_files:
+            assert f.name.startswith("test_"), f"Test file should start with test_: {f.name}"
+
+    def test_no_test_files_in_subdirectories(self) -> None:
+        tests_dir = REPO_ROOT / "tests"
+        subdirs = [d for d in tests_dir.iterdir() if d.is_dir() and d.name != "__pycache__"]
+        for subdir in subdirs:
+            test_files = list(subdir.glob("test_*.py"))
+            assert len(test_files) == 0, (
+                f"Tests should be flat — found test files in subdirectory: {subdir.name}"
+            )
+
+    def test_minimum_test_file_count(self, test_files: list[Path]) -> None:
+        assert len(test_files) >= 40, (
+            f"Expected at least 40 test files, found {len(test_files)}"
+        )
+
+
+class TestQualityScoreTestingMethodologyCrossRef:
+    """QUALITY_SCORE.md and testing-methodology.md should cross-reference."""
+
+    @pytest.fixture()
+    def quality_text(self) -> str:
+        return (DOCS_DIR / "QUALITY_SCORE.md").read_text()
+
+    @pytest.fixture()
+    def methodology_text(self) -> str:
+        return (DOCS_DIR / "design-docs" / "testing-methodology.md").read_text()
+
+    def test_quality_references_testing_conventions(self, quality_text: str) -> None:
+        assert "Testing conventions" in quality_text
+
+    def test_quality_references_coverage_targets(self, quality_text: str) -> None:
+        assert "Coverage targets" in quality_text
+
+    def test_methodology_references_dead_code(self, methodology_text: str) -> None:
+        assert "dead code" in methodology_text.lower()
+
+    def test_methodology_references_tech_debt_tracker(
+        self, methodology_text: str
+    ) -> None:
+        assert "tech-debt-tracker" in methodology_text
+
+    def test_methodology_coverage_table_has_backend_row(
+        self, methodology_text: str
+    ) -> None:
+        assert "Backend" in methodology_text
+
+    def test_methodology_coverage_table_has_frontend_row(
+        self, methodology_text: str
+    ) -> None:
+        assert "Frontend" in methodology_text
+
+
+class TestDocsIndexOpenCodeBackend:
+    """docs/index.md should document the opencode backend."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "index.md").read_text()
+
+    def test_mentions_opencode_cli_hand(self, content: str) -> None:
+        assert "opencode" in content.lower(), (
+            "docs/index.md should mention the opencode backend"
+        )
+
+
+class TestDesignDocMinimumSections:
+    """Each design doc should have at minimum Context and Decision sections."""
+
+    @pytest.fixture()
+    def design_doc_files(self) -> list[Path]:
+        dd = DOCS_DIR / "design-docs"
+        return sorted(
+            f for f in dd.glob("*.md")
+            if f.name != "index.md"
+        )
+
+    def test_design_docs_have_headings(self, design_doc_files: list[Path]) -> None:
+        for doc in design_doc_files:
+            content = doc.read_text()
+            headings = re.findall(r"^##\s+", content, re.MULTILINE)
+            assert len(headings) >= 2, (
+                f"Design doc '{doc.name}' should have at least 2 section headings, "
+                f"found {len(headings)}"
+            )
+
+    def test_design_docs_are_non_trivial(self, design_doc_files: list[Path]) -> None:
+        for doc in design_doc_files:
+            content = doc.read_text()
+            assert len(content) >= 200, (
+                f"Design doc '{doc.name}' should have at least 200 characters, "
+                f"found {len(content)}"
+            )
+
+    def test_design_doc_count_matches_index(
+        self, design_doc_files: list[Path]
+    ) -> None:
+        index_text = (DOCS_DIR / "design-docs" / "index.md").read_text()
+        index_links = re.findall(r"\(([^)]+\.md)\)", index_text)
+        assert len(design_doc_files) == len(index_links), (
+            f"Design doc count ({len(design_doc_files)}) should match "
+            f"index link count ({len(index_links)})"
+        )
+
+
+class TestTechDebtTrackerActiveItems:
+    """Tech debt tracker should have well-formed active items."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "exec-plans" / "tech-debt-tracker.md").read_text()
+
+    def test_active_items_have_priority(self, content: str) -> None:
+        # Each row after header should have a priority column
+        lines = content.split("\n")
+        in_table = False
+        header_seen = False
+        for line in lines:
+            if "| Item |" in line:
+                in_table = True
+                header_seen = False
+                continue
+            if in_table and line.startswith("|---"):
+                header_seen = True
+                continue
+            if in_table and header_seen and line.startswith("|"):
+                cols = [c.strip() for c in line.split("|")]
+                # cols[0] is empty (before first |), cols[1]=Item, cols[2]=Priority
+                assert len(cols) >= 5, f"Table row should have at least 4 columns: {line}"
+                priority = cols[2]
+                assert priority in {"High", "Medium", "Low", "None"}, (
+                    f"Priority should be High/Medium/Low/None, got: '{priority}'"
+                )
+            if in_table and not line.startswith("|") and line.strip():
+                in_table = False
+
+    def test_active_items_have_module(self, content: str) -> None:
+        lines = content.split("\n")
+        in_active = False
+        for line in lines:
+            if "## Active items" in line:
+                in_active = True
+                continue
+            if in_active and line.startswith("## "):
+                break
+            if in_active and line.startswith("|") and "Item" not in line and "---" not in line:
+                cols = [c.strip() for c in line.split("|")]
+                if len(cols) >= 4:
+                    module = cols[3]
+                    assert len(module) > 0, f"Active item should have module: {line}"
