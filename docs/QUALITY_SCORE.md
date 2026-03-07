@@ -15,6 +15,7 @@ Metrics and standards for code quality in helping_hands.
 | Frontend lint | `eslint` | `frontend/src/` | Enforced |
 | Frontend types | `tsc --noEmit` | `frontend/src/` | Enforced |
 | Frontend tests | Vitest | `frontend/src/` | Enforced |
+| Frontend e2e | Playwright | `frontend/e2e/` | Enforced |
 
 ### Local quality checks
 
@@ -26,6 +27,7 @@ uv run pre-commit run --all-files # all hooks
 npm --prefix frontend run lint    # frontend lint
 npm --prefix frontend run typecheck  # frontend types
 npm --prefix frontend run test    # frontend tests
+npm --prefix frontend run test:e2e # playwright e2e tests
 ```
 
 ## Coverage targets

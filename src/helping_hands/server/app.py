@@ -307,8 +307,28 @@ def _get_claude_oauth_token() -> str | None:
         return None
 
 
-def _fetch_claude_usage() -> ClaudeUsageResponse:
-    """Fetch Claude Code usage via the Anthropic OAuth usage API."""
+_usage_cache: ClaudeUsageResponse | None = None
+_usage_cache_ts: float = 0.0
+_USAGE_CACHE_TTL = 300  # 5 minutes
+
+
+def _fetch_claude_usage(*, force: bool = False) -> ClaudeUsageResponse:
+    """Fetch Claude Code usage via the Anthropic OAuth usage API.
+
+    Results are cached for 5 minutes to avoid rate-limiting (429).
+    Pass ``force=True`` to bypass the cache.
+    """
+    global _usage_cache, _usage_cache_ts
+
+    import time as _time
+
+    if (
+        not force
+        and _usage_cache is not None
+        and (_time.monotonic() - _usage_cache_ts) < _USAGE_CACHE_TTL
+    ):
+        return _usage_cache
+
     now = datetime.now(UTC).isoformat()
 
     token = _get_claude_oauth_token()
@@ -377,7 +397,10 @@ def _fetch_claude_usage() -> ClaudeUsageResponse:
             fetched_at=now,
         )
 
-    return ClaudeUsageResponse(levels=levels, fetched_at=now)
+    result = ClaudeUsageResponse(levels=levels, fetched_at=now)
+    _usage_cache = result
+    _usage_cache_ts = _time.monotonic()
+    return result
 
 
 _TERMINAL_TASK_STATES = {"SUCCESS", "FAILURE", "REVOKED"}
@@ -1164,6 +1187,8 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
                   Payload
                 </button>
               </div>
+              <button type="button" id="copy_output_btn" class="secondary"
+                style="font-size:0.7rem;padding:2px 8px;" title="Copy output to clipboard">Copy</button>
             </div>
             <pre id="output_text">No updates yet.</pre>
           </article>
@@ -1876,7 +1901,7 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
       async function refreshClaudeUsage() {
         try {
           usageRefreshBtn.disabled = true;
-          const res = await fetch("/health/claude-usage?_=" + Date.now(), { cache: "no-store" });
+          const res = await fetch("/health/claude-usage?force=true&_=" + Date.now(), { cache: "no-store" });
           if (!res.ok) {
             usageMeters.innerHTML = '<span style="color:#94a3b8;font-size:0.8rem;">Unavailable</span>';
             return;
@@ -1934,6 +1959,11 @@ __DEFAULT_SMOKE_TEST_PROMPT__</textarea>
           setOutputTab(nextTab);
         });
       }
+
+      document.getElementById("copy_output_btn").addEventListener("click", () => {
+        const text = outputTextEl.textContent || "";
+        navigator.clipboard.writeText(text).catch(() => {});
+      });
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -2247,9 +2277,9 @@ def notif_sw() -> Response:
 
 
 @app.get("/health/claude-usage", response_model=ClaudeUsageResponse)
-def get_claude_usage() -> ClaudeUsageResponse:
-    """Return current Claude Code CLI usage metrics."""
-    return _fetch_claude_usage()
+def get_claude_usage(force: bool = False) -> ClaudeUsageResponse:
+    """Return current Claude Code CLI usage metrics (cached 5 min)."""
+    return _fetch_claude_usage(force=force)
 
 
 @app.get("/health")

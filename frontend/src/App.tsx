@@ -573,9 +573,10 @@ async function fetchServiceHealth(): Promise<ServiceHealthState> {
   }
 }
 
-async function fetchClaudeUsage(): Promise<ClaudeUsageResponse> {
+async function fetchClaudeUsage(force = false): Promise<ClaudeUsageResponse> {
   try {
-    const response = await fetch(apiUrl(`/health/claude-usage?_=${Date.now()}`), {
+    const qs = force ? `force=true&_=${Date.now()}` : `_=${Date.now()}`;
+    const response = await fetch(apiUrl(`/health/claude-usage?${qs}`), {
       cache: "no-store",
     });
     if (!response.ok) {
@@ -1712,7 +1713,7 @@ export default function App() {
 
   const refreshClaudeUsage = useCallback(async () => {
     setClaudeUsageLoading(true);
-    const data = await fetchClaudeUsage();
+    const data = await fetchClaudeUsage(true);
     setClaudeUsage(data);
     setClaudeUsageLoading(false);
   }, []);
@@ -2474,6 +2475,17 @@ export default function App() {
           </div>
         </div>
         <div className="monitor-bar-right">
+          <button
+            type="button"
+            className="secondary"
+            style={{ fontSize: "0.7rem", padding: "2px 8px" }}
+            title="Copy output to clipboard"
+            onClick={() => {
+              navigator.clipboard.writeText(activeOutputText).catch(() => {});
+            }}
+          >
+            Copy
+          </button>
           <span
             className={`status-blinker${isBlinkerAnimated ? " pulse" : ""}`}
             style={{ backgroundColor: blinkerColor }}
