@@ -6409,3 +6409,540 @@ class TestTestingMethodologyDesignDocContent:
         assert "Backend" in content
         assert "Frontend" in content
         assert "80%+" in content or "80%" in content
+
+
+class TestTodoMdContent:
+    """TODO.md should reference actionable items and track completion."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "TODO.md").read_text()
+
+    def test_todo_file_exists(self) -> None:
+        assert (REPO_ROOT / "TODO.md").exists()
+
+    def test_has_sections(self, content: str) -> None:
+        """TODO.md should have at least one section heading."""
+        headings = re.findall(r"^##\s+", content, re.MULTILINE)
+        assert len(headings) >= 1, "TODO.md should have at least one section"
+
+    def test_has_checkbox_items(self, content: str) -> None:
+        """TODO.md should contain checkbox items (completed or pending)."""
+        checkboxes = re.findall(r"- \[([ x])\]", content)
+        assert len(checkboxes) >= 1, "TODO.md should have at least one checkbox item"
+
+    def test_completed_items_use_x(self, content: str) -> None:
+        """Completed items should use [x], not [X]."""
+        bad_checkboxes = re.findall(r"- \[X\]", content)
+        assert len(bad_checkboxes) == 0, "Completed TODO items should use lowercase [x]"
+
+
+class TestArchitectureMdExternalIntegrations:
+    """ARCHITECTURE.md external integrations section should be complete."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "ARCHITECTURE.md").read_text()
+
+    def test_has_external_integrations_section(self, content: str) -> None:
+        assert "External integrations" in content
+
+    @pytest.mark.parametrize(
+        "integration",
+        ["GitHub", "OpenAI", "Anthropic", "Google", "LiteLLM", "Ollama", "Redis"],
+    )
+    def test_integration_mentioned(self, content: str, integration: str) -> None:
+        assert integration in content, (
+            f"ARCHITECTURE.md external integrations should mention '{integration}'"
+        )
+
+    def test_redis_roles_documented(self, content: str) -> None:
+        """Redis roles (task state, broker, schedules) should be listed."""
+        for role in ["Task state", "Celery", "RedBeat"]:
+            assert role in content, (
+                f"ARCHITECTURE.md should document Redis role: {role}"
+            )
+
+    def test_has_data_flows_section(self, content: str) -> None:
+        assert "Data flows" in content
+
+    def test_data_flow_cli_server_mcp(self, content: str) -> None:
+        """All three data flows (CLI, Server, MCP) should be documented."""
+        for flow in ["CLI task execution", "Server task execution", "MCP server flow"]:
+            assert flow in content, f"ARCHITECTURE.md should document data flow: {flow}"
+
+
+class TestArchitectureMdSkillCatalogSection:
+    """ARCHITECTURE.md should document the skill catalog."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "ARCHITECTURE.md").read_text()
+
+    def test_skill_catalog_section_exists(self, content: str) -> None:
+        assert "Skill catalog" in content
+
+    def test_skill_catalog_references(self, content: str) -> None:
+        for ref in ["meta/skills", "catalog", "Markdown", "--skills"]:
+            assert ref in content, (
+                f"ARCHITECTURE.md skill catalog should reference '{ref}'"
+            )
+
+
+class TestArchitectureMdUsageMonitoringPipeline:
+    """ARCHITECTURE.md should document the full usage monitoring pipeline."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "ARCHITECTURE.md").read_text()
+
+    def test_usage_monitoring_section_exists(self, content: str) -> None:
+        assert "Usage monitoring" in content
+
+    def test_pipeline_stages_documented(self, content: str) -> None:
+        for stage in ["Token retrieval", "Usage API", "Persistence", "Scheduling"]:
+            assert stage in content, (
+                f"ARCHITECTURE.md usage monitoring should document stage: {stage}"
+            )
+
+    def test_keychain_reference(self, content: str) -> None:
+        assert "Keychain" in content
+
+    def test_independent_failure_model(self, content: str) -> None:
+        assert "independently" in content.lower()
+
+
+class TestDesignMdPRDescriptionPatterns:
+    """DESIGN.md PR description patterns should be documented."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "DESIGN.md").read_text()
+
+    def test_pr_description_section_exists(self, content: str) -> None:
+        assert "PR description" in content
+
+    def test_pr_description_key_concepts(self, content: str) -> None:
+        for concept in ["PR_TITLE", "PR_BODY", "COMMIT_MSG", "truncation"]:
+            assert concept in content, (
+                f"DESIGN.md PR description should reference '{concept}'"
+            )
+
+    def test_fallback_chain_mentioned(self, content: str) -> None:
+        assert "fallback" in content.lower()
+
+    def test_diff_limit_mentioned(self, content: str) -> None:
+        assert "diff" in content.lower()
+
+
+class TestDesignMdScheduledTasks:
+    """DESIGN.md scheduled task management should be documented."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "DESIGN.md").read_text()
+
+    def test_scheduled_tasks_section_exists(self, content: str) -> None:
+        assert "Scheduled task" in content
+
+    def test_redbeat_referenced(self, content: str) -> None:
+        assert "RedBeat" in content
+
+    def test_cron_presets_referenced(self, content: str) -> None:
+        assert "cron" in content.lower()
+
+    def test_scheduled_task_dataclass(self, content: str) -> None:
+        assert "ScheduledTask" in content
+
+    def test_trigger_now_referenced(self, content: str) -> None:
+        assert "trigger_now" in content
+
+
+class TestSecurityMdGeminiApprovalMode:
+    """SECURITY.md should document Gemini CLI approval mode."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "SECURITY.md").read_text()
+
+    def test_gemini_approval_mode_section(self, content: str) -> None:
+        assert "Gemini CLI approval mode" in content
+
+    def test_auto_edit_documented(self, content: str) -> None:
+        assert "auto_edit" in content
+
+    def test_approval_mode_flag(self, content: str) -> None:
+        assert "--approval-mode" in content
+
+
+class TestSecurityMdContainerIsolation:
+    """SECURITY.md container isolation should cover all relevant details."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "SECURITY.md").read_text()
+
+    def test_container_isolation_section(self, content: str) -> None:
+        assert "Container isolation" in content
+
+    def test_backend_container_env(self, content: str) -> None:
+        assert "HELPING_HANDS_" in content and "CONTAINER" in content
+
+    def test_docker_sandbox_section(self, content: str) -> None:
+        assert "Docker Desktop sandbox" in content or "Docker Sandbox" in content
+
+    def test_microvm_mentioned(self, content: str) -> None:
+        assert "microVM" in content
+
+    def test_workspace_sync(self, content: str) -> None:
+        assert "sync" in content.lower() or "mount" in content.lower()
+
+
+class TestReliabilityMdIterativeFailureModes:
+    """RELIABILITY.md should document all iterative hand failure modes."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "RELIABILITY.md").read_text()
+
+    def test_iterative_section_exists(self, content: str) -> None:
+        assert "Iterative hand failures" in content
+
+    @pytest.mark.parametrize(
+        "failure_mode",
+        [
+            "Provider API failures",
+            "Context exhaustion",
+            "@@READ",
+            "@@TOOL",
+            "Early completion",
+            "Streaming errors",
+        ],
+    )
+    def test_failure_mode_documented(self, content: str, failure_mode: str) -> None:
+        assert failure_mode in content, (
+            f"RELIABILITY.md should document iterative failure mode: {failure_mode}"
+        )
+
+    def test_max_iterations_mentioned(self, content: str) -> None:
+        assert "max_iterations" in content or "max-iterations" in content
+
+    def test_satisfied_signal(self, content: str) -> None:
+        assert "SATISFIED" in content
+
+
+class TestReliabilityMdIdempotency:
+    """RELIABILITY.md should document idempotency guarantees."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "RELIABILITY.md").read_text()
+
+    def test_idempotency_section_exists(self, content: str) -> None:
+        assert "Idempotency" in content or "idempotent" in content.lower()
+
+    def test_pr_update_idempotency(self, content: str) -> None:
+        assert "PR" in content
+        assert "update" in content.lower()
+
+
+class TestDocsIndexApiReferenceAccuracy:
+    """docs/index.md API reference should list real modules."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "index.md").read_text()
+
+    @pytest.mark.parametrize(
+        "module_doc",
+        [
+            "api/lib/config.md",
+            "api/lib/repo.md",
+            "api/lib/github.md",
+            "api/lib/ai_providers.md",
+            "api/lib/hands/v1/hand.md",
+            "api/lib/meta/tools.md",
+            "api/cli/main.md",
+        ],
+    )
+    def test_api_doc_listed(self, content: str, module_doc: str) -> None:
+        assert module_doc in content, f"docs/index.md should list API doc: {module_doc}"
+
+    @pytest.mark.parametrize(
+        "api_doc_path",
+        [
+            "api/lib/config.md",
+            "api/lib/repo.md",
+            "api/lib/github.md",
+            "api/lib/ai_providers.md",
+            "api/server/app.md",
+            "api/server/celery_app.md",
+            "api/server/mcp_server.md",
+        ],
+    )
+    def test_api_doc_file_exists(self, api_doc_path: str) -> None:
+        assert (DOCS_DIR / api_doc_path).exists(), (
+            f"API doc file should exist: {api_doc_path}"
+        )
+
+    def test_server_section_present(self, content: str) -> None:
+        """Server section should list app, celery_app, mcp_server."""
+        for module in ["app", "celery_app", "mcp_server"]:
+            assert module in content, (
+                f"docs/index.md API reference should list server module: {module}"
+            )
+
+
+class TestDocsIndexAllBackendsInCLIExamples:
+    """docs/index.md CLI examples should cover all major backends."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "index.md").read_text()
+
+    @pytest.mark.parametrize(
+        "backend",
+        [
+            "basic-langgraph",
+            "basic-atomic",
+            "codexcli",
+            "claudecodecli",
+            "goose",
+            "geminicli",
+        ],
+    )
+    def test_backend_in_examples(self, content: str, backend: str) -> None:
+        assert backend in content, (
+            f"docs/index.md CLI examples should include {backend}"
+        )
+
+    def test_e2e_examples(self, content: str) -> None:
+        """E2E examples (new PR and existing PR) should be present."""
+        assert "--e2e" in content
+        assert "--pr-number" in content
+
+
+class TestProductSpecsDirectoryStructure:
+    """product-specs/ should have an index and at least one spec."""
+
+    def test_index_exists(self) -> None:
+        assert (DOCS_DIR / "product-specs" / "index.md").exists()
+
+    def test_at_least_one_spec(self) -> None:
+        specs = list((DOCS_DIR / "product-specs").glob("*.md"))
+        non_index = [s for s in specs if s.name != "index.md"]
+        assert len(non_index) >= 1, "product-specs/ should have at least one spec"
+
+    def test_spec_files_referenced_in_index(self) -> None:
+        index_text = (DOCS_DIR / "product-specs" / "index.md").read_text()
+        specs = list((DOCS_DIR / "product-specs").glob("*.md"))
+        for spec in specs:
+            if spec.name != "index.md":
+                assert spec.name in index_text, (
+                    f"product-specs/{spec.name} should be listed in index.md"
+                )
+
+
+class TestGeneratedDocsDirectory:
+    """generated/ directory should have db-schema.md."""
+
+    def test_db_schema_exists(self) -> None:
+        assert (DOCS_DIR / "generated" / "db-schema.md").exists()
+
+    def test_db_schema_not_empty(self) -> None:
+        content = (DOCS_DIR / "generated" / "db-schema.md").read_text()
+        assert len(content.strip()) > 50, "db-schema.md should have meaningful content"
+
+
+class TestDesignDocCrossReferenceConsistency:
+    """Design docs should cross-reference each other where relevant."""
+
+    @pytest.fixture()
+    def hand_abstraction(self) -> str:
+        return (DOCS_DIR / "design-docs" / "hand-abstraction.md").read_text()
+
+    @pytest.fixture()
+    def two_phase(self) -> str:
+        return (DOCS_DIR / "design-docs" / "two-phase-cli-hands.md").read_text()
+
+    @pytest.fixture()
+    def filesystem_security(self) -> str:
+        return (DOCS_DIR / "design-docs" / "filesystem-security.md").read_text()
+
+    def test_hand_abstraction_mentions_e2e(self, hand_abstraction: str) -> None:
+        assert "E2EHand" in hand_abstraction
+
+    def test_hand_abstraction_mentions_iterative(self, hand_abstraction: str) -> None:
+        assert (
+            "IterativeHand" in hand_abstraction
+            or "iterative" in hand_abstraction.lower()
+        )
+
+    def test_two_phase_mentions_base_class(self, two_phase: str) -> None:
+        assert "_TwoPhaseCLIHand" in two_phase
+
+    def test_two_phase_mentions_cli_backends(self, two_phase: str) -> None:
+        for backend in ["claude", "codex", "goose", "gemini"]:
+            assert backend in two_phase.lower(), (
+                f"two-phase-cli-hands.md should mention {backend}"
+            )
+
+    def test_filesystem_security_mentions_mcp(self, filesystem_security: str) -> None:
+        assert "MCP" in filesystem_security
+
+    def test_filesystem_security_mentions_resolve_repo_target(
+        self, filesystem_security: str
+    ) -> None:
+        assert "resolve_repo_target" in filesystem_security
+
+
+class TestExecPlansCompletedNaming:
+    """Completed plans should follow chronological naming conventions."""
+
+    def test_completed_plans_have_date_names(self) -> None:
+        completed_dir = DOCS_DIR / "exec-plans" / "completed"
+        if not completed_dir.exists():
+            pytest.skip("No completed plans directory")
+        for plan in completed_dir.glob("*.md"):
+            assert re.match(r"^\d{4}-\d{2}-\d{2}\.md$", plan.name), (
+                f"Completed plan should have YYYY-MM-DD.md name: {plan.name}"
+            )
+
+    def test_no_duplicate_dates(self) -> None:
+        completed_dir = DOCS_DIR / "exec-plans" / "completed"
+        if not completed_dir.exists():
+            pytest.skip("No completed plans directory")
+        dates = [p.stem for p in completed_dir.glob("*.md")]
+        assert len(dates) == len(set(dates)), "No duplicate completed plan dates"
+
+
+class TestTechDebtTrackerSections:
+    """Tech debt tracker should have required sections and table columns."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "exec-plans" / "tech-debt-tracker.md").read_text()
+
+    def test_has_active_items_section(self, content: str) -> None:
+        assert "Active items" in content
+
+    def test_has_resolved_items_section(self, content: str) -> None:
+        assert "Resolved items" in content
+
+    def test_has_table_structure(self, content: str) -> None:
+        """Active items should be in a table with Item, Priority, Module, Notes."""
+        for header in ["Item", "Priority", "Module", "Notes"]:
+            assert header in content, (
+                f"Tech debt tracker table should have '{header}' column"
+            )
+
+    def test_priorities_are_valid(self, content: str) -> None:
+        """Priorities should be High, Medium, Low, or None."""
+        rows = re.findall(r"\|[^|]+\|\s*(High|Medium|Low|None)\s*\|", content)
+        assert len(rows) >= 3, "Should have at least 3 tech debt items with priorities"
+
+
+class TestConfestFixtureDocumentation:
+    """conftest.py fixtures should have docstrings and usage examples."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "tests" / "conftest.py").read_text()
+
+    def test_all_fixtures_have_docstrings(self, content: str) -> None:
+        """Every fixture function should have a docstring."""
+        # Find fixture function names
+        fixture_names = re.findall(
+            r"@pytest\.fixture\(\)\s*\ndef (\w+)\(",
+            content,
+        )
+        for name in fixture_names:
+            # Find the function def and check for a docstring after it
+            pattern = rf"def {name}\([^)]*\)[^:]*:\s*\n\s+\"\"\""
+            assert re.search(pattern, content), (
+                f"Fixture '{name}' should have a docstring"
+            )
+
+    def test_factory_fixtures_have_usage_examples(self, content: str) -> None:
+        """Factory fixtures (make_*) should include Usage:: examples."""
+        factory_count = content.count("def make_")
+        usage_count = content.count("Usage::")
+        assert usage_count >= factory_count, (
+            f"Expected at least {factory_count} Usage:: examples for factory fixtures"
+        )
+
+    def test_expected_fixtures_present(self, content: str) -> None:
+        """All expected shared fixtures should be defined."""
+        expected = [
+            "repo_index",
+            "fake_config",
+            "make_cli_hand",
+            "mock_github_client",
+            "make_fake_module",
+        ]
+        for fixture_name in expected:
+            assert f"def {fixture_name}" in content, (
+                f"conftest.py should define fixture '{fixture_name}'"
+            )
+
+
+class TestQualityScoreMdModuleCoverage:
+    """QUALITY_SCORE.md should track coverage for all key modules."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "QUALITY_SCORE.md").read_text()
+
+    def test_per_module_coverage_section(self, content: str) -> None:
+        assert "Per-module coverage" in content
+
+    def test_remaining_gaps_section(self, content: str) -> None:
+        assert "Remaining coverage gaps" in content
+
+    @pytest.mark.parametrize(
+        "key_module",
+        [
+            "lib/config.py",
+            "lib/repo.py",
+            "lib/github.py",
+            "server/app.py",
+            "server/mcp_server.py",
+        ],
+    )
+    def test_key_module_tracked(self, content: str, key_module: str) -> None:
+        assert key_module in content, (
+            f"QUALITY_SCORE.md should track coverage for {key_module}"
+        )
+
+    def test_areas_for_improvement(self, content: str) -> None:
+        assert "Areas for improvement" in content
+
+
+class TestProductSenseMdCompleteness:
+    """PRODUCT_SENSE.md should cover all product dimensions."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "PRODUCT_SENSE.md").read_text()
+
+    def test_has_what_section(self, content: str) -> None:
+        assert "What helping_hands is" in content
+
+    def test_has_target_users(self, content: str) -> None:
+        assert "Target users" in content
+
+    def test_has_value_propositions(self, content: str) -> None:
+        assert "value proposition" in content.lower() or "Key value" in content
+
+    def test_has_priorities(self, content: str) -> None:
+        assert "priorities" in content.lower()
+
+    def test_has_implemented_capabilities(self, content: str) -> None:
+        assert "Implemented capabilities" in content
+
+    def test_has_future_directions(self, content: str) -> None:
+        assert "Future directions" in content
+
+    def test_mentions_all_run_modes(self, content: str) -> None:
+        for mode in ["CLI", "server", "MCP"]:
+            assert mode in content, f"PRODUCT_SENSE.md should mention run mode: {mode}"
