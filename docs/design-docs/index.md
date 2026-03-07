@@ -38,6 +38,7 @@ Index of design documents for helping_hands.
 - [Scheduling System](scheduling-system.md) — RedBeat, ScheduleManager CRUD, cron presets, trigger-now
 - [GitHub Client](github-client.md) — Authentication, clone/branch/PR lifecycle, and token safety
 - [CI Pipeline](ci-pipeline.md) — GitHub Actions workflows, matrix strategy, coverage, and docs deployment
+- [Local Stack](local-stack.md) — Native process management for local development with Docker data services
 
 ## Quality
 

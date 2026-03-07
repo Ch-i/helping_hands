@@ -3534,3 +3534,332 @@ class TestDesignMdTestingPatternsSection:
             f"Testing patterns section should have multiple bold-formatted "
             f"headings, found {bold_count // 2} pairs"
         )
+
+
+# ---------------------------------------------------------------------------
+# AGENT.md structural validation
+# ---------------------------------------------------------------------------
+
+
+class TestAgentMdStructure:
+    """AGENT.md must have required sections for AI agent guidance."""
+
+    @pytest.fixture()
+    def agent_text(self) -> str:
+        return (REPO_ROOT / "AGENT.md").read_text()
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "Ground rules",
+            "Code style",
+            "Design preferences",
+            "Tone and communication",
+            "Recurring decisions",
+            "Dependencies",
+        ],
+    )
+    def test_required_sections_exist(self, agent_text: str, section: str) -> None:
+        assert section in agent_text, f"AGENT.md must have '{section}' section"
+
+    def test_has_auto_update_markers(self, agent_text: str) -> None:
+        count = agent_text.count("[auto-update]")
+        assert count >= 4, (
+            f"AGENT.md should have at least 4 [auto-update] markers, found {count}"
+        )
+
+    def test_dependencies_table_has_entries(self, agent_text: str) -> None:
+        idx = agent_text.find("## Dependencies")
+        assert idx != -1
+        section = agent_text[idx:]
+        table_rows = [
+            line
+            for line in section.splitlines()
+            if line.startswith("|") and "---" not in line and "Package" not in line
+        ]
+        assert len(table_rows) >= 10, (
+            f"Dependencies table should list at least 10 packages, found {len(table_rows)}"
+        )
+
+    @pytest.mark.parametrize(
+        "keyword",
+        ["pytest", "ruff", "fastapi", "celery", "PyGithub", "mcp"],
+    )
+    def test_key_dependencies_listed(self, agent_text: str, keyword: str) -> None:
+        assert keyword in agent_text, f"AGENT.md Dependencies should list '{keyword}'"
+
+    def test_recurring_decisions_have_dates(self, agent_text: str) -> None:
+        idx = agent_text.find("## Recurring decisions")
+        assert idx != -1
+        section = agent_text[idx:]
+        date_pattern = re.compile(r"\(20\d{2}-\d{2}-\d{2}\)")
+        dates = date_pattern.findall(section)
+        assert len(dates) >= 5, (
+            f"Recurring decisions should have at least 5 dated entries, found {len(dates)}"
+        )
+
+    def test_last_updated_present(self, agent_text: str) -> None:
+        assert "Last updated:" in agent_text, (
+            "AGENT.md should have a 'Last updated:' footer"
+        )
+
+
+# ---------------------------------------------------------------------------
+# API docs directory validation
+# ---------------------------------------------------------------------------
+
+
+class TestApiDocsDirectory:
+    """API docs directory should have valid non-empty documentation files."""
+
+    API_DIR: ClassVar[Path] = DOCS_DIR / "api"
+
+    @pytest.fixture()
+    def api_doc_files(self) -> list[Path]:
+        return sorted(self.API_DIR.rglob("*.md"))
+
+    def test_api_docs_exist(self, api_doc_files: list[Path]) -> None:
+        assert len(api_doc_files) >= 7, (
+            f"API docs should have at least 7 files, found {len(api_doc_files)}"
+        )
+
+    def test_api_docs_non_empty(self, api_doc_files: list[Path]) -> None:
+        for doc in api_doc_files:
+            content = doc.read_text()
+            assert len(content) > 20, (
+                f"API doc {doc.relative_to(DOCS_DIR)} should have some content"
+            )
+
+    @pytest.mark.parametrize(
+        "expected_file",
+        [
+            "cli/main.md",
+            "lib/config.md",
+            "lib/repo.md",
+            "lib/github.md",
+            "lib/ai_providers.md",
+            "server/app.md",
+            "server/mcp_server.md",
+        ],
+    )
+    def test_expected_api_docs_exist(self, expected_file: str) -> None:
+        path = self.API_DIR / expected_file
+        assert path.exists(), f"Expected API doc {expected_file} does not exist"
+
+    def test_api_docs_have_headings(self, api_doc_files: list[Path]) -> None:
+        for doc in api_doc_files:
+            content = doc.read_text()
+            assert content.startswith("#") or "\n#" in content, (
+                f"API doc {doc.relative_to(DOCS_DIR)} should have at least one heading"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Product specs content validation
+# ---------------------------------------------------------------------------
+
+
+class TestProductSpecsStructuredContent:
+    """Product specs should have structured content with required sections."""
+
+    SPECS_DIR: ClassVar[Path] = DOCS_DIR / "product-specs"
+
+    @pytest.fixture()
+    def spec_files(self) -> list[Path]:
+        return sorted(f for f in self.SPECS_DIR.glob("*.md") if f.name != "index.md")
+
+    def test_specs_exist(self, spec_files: list[Path]) -> None:
+        assert len(spec_files) >= 1, "Should have at least one product spec"
+
+    def test_onboarding_spec_has_required_sections(self) -> None:
+        content = (self.SPECS_DIR / "new-user-onboarding.md").read_text()
+        for section in ["User story", "Current state", "Requirements"]:
+            assert section in content, f"Onboarding spec must have '{section}' section"
+
+    def test_specs_have_status(self, spec_files: list[Path]) -> None:
+        for spec in spec_files:
+            content = spec.read_text()
+            assert "Status:" in content, (
+                f"Product spec {spec.name} should have a Status field"
+            )
+
+    def test_specs_have_created_date(self, spec_files: list[Path]) -> None:
+        for spec in spec_files:
+            content = spec.read_text()
+            assert "Created:" in content, (
+                f"Product spec {spec.name} should have a Created date"
+            )
+
+    def test_index_lists_all_specs(self, spec_files: list[Path]) -> None:
+        index = (self.SPECS_DIR / "index.md").read_text()
+        for spec in spec_files:
+            assert spec.stem in index, (
+                f"Product spec {spec.name} should be listed in index.md"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Local stack design doc validation
+# ---------------------------------------------------------------------------
+
+
+class TestLocalStackDesignDoc:
+    """Local stack design doc should describe the development stack script."""
+
+    @pytest.fixture()
+    def doc_text(self) -> str:
+        return (DOCS_DIR / "design-docs" / "local-stack.md").read_text()
+
+    def test_doc_exists(self) -> None:
+        path = DOCS_DIR / "design-docs" / "local-stack.md"
+        assert path.exists(), "local-stack.md design doc must exist"
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "Context",
+            "Overview",
+            "Services",
+            "Lifecycle",
+            "Environment variables",
+            "Redis URL normalization",
+            "Decision",
+            "Consequences",
+        ],
+    )
+    def test_required_sections(self, doc_text: str, section: str) -> None:
+        assert section in doc_text, f"local-stack.md should have '{section}' section"
+
+    @pytest.mark.parametrize(
+        "service",
+        ["server", "worker", "beat", "flower"],
+    )
+    def test_services_documented(self, doc_text: str, service: str) -> None:
+        assert service in doc_text, (
+            f"local-stack.md should document the '{service}' service"
+        )
+
+    @pytest.mark.parametrize(
+        "env_var",
+        [
+            "SERVER_PORT",
+            "FLOWER_PORT",
+            "REDIS_URL",
+            "CELERY_BROKER_URL",
+            "CELERY_RESULT_BACKEND",
+            "HH_LOCAL_STACK_KEEP_DOCKER_HOSTS",
+        ],
+    )
+    def test_env_vars_documented(self, doc_text: str, env_var: str) -> None:
+        assert env_var in doc_text, f"local-stack.md should document '{env_var}'"
+
+    def test_script_path_referenced(self, doc_text: str) -> None:
+        assert "run-local-stack.sh" in doc_text, (
+            "local-stack.md should reference the script path"
+        )
+
+    def test_indexed_in_design_docs(self) -> None:
+        index = (DOCS_DIR / "design-docs" / "index.md").read_text()
+        assert "local-stack.md" in index, (
+            "local-stack.md should be listed in design-docs/index.md"
+        )
+
+    def test_indexed_in_docs_index(self) -> None:
+        index = (DOCS_DIR / "index.md").read_text()
+        assert "local stack" in index, (
+            "local stack should be mentioned in docs/index.md"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Run-local-stack script existence and consistency
+# ---------------------------------------------------------------------------
+
+
+class TestRunLocalStackScript:
+    """The run-local-stack.sh script should exist and match doc claims."""
+
+    SCRIPT_PATH: ClassVar[Path] = REPO_ROOT / "scripts" / "run-local-stack.sh"
+
+    def test_script_exists(self) -> None:
+        assert self.SCRIPT_PATH.exists(), "scripts/run-local-stack.sh must exist"
+
+    def test_script_is_executable_bash(self) -> None:
+        content = self.SCRIPT_PATH.read_text()
+        assert content.startswith("#!/usr/bin/env bash"), (
+            "Script should use /usr/bin/env bash shebang"
+        )
+
+    @pytest.mark.parametrize(
+        "command",
+        ["start", "stop", "restart", "status", "logs"],
+    )
+    def test_commands_implemented(self, command: str) -> None:
+        content = self.SCRIPT_PATH.read_text()
+        assert command in content, f"Script should implement '{command}' command"
+
+    @pytest.mark.parametrize(
+        "service",
+        ["server", "worker", "beat", "flower"],
+    )
+    def test_services_managed(self, service: str) -> None:
+        content = self.SCRIPT_PATH.read_text()
+        assert f'"{service}"' in content or f"'{service}'" in content, (
+            f"Script should manage '{service}' service"
+        )
+
+    def test_env_loading(self) -> None:
+        content = self.SCRIPT_PATH.read_text()
+        assert "load_env" in content, "Script should have env loading function"
+
+    def test_redis_normalization(self) -> None:
+        content = self.SCRIPT_PATH.read_text()
+        assert "normalize_redis_url_for_local" in content, (
+            "Script should normalize Redis URLs for local use"
+        )
+
+    def test_deployment_modes_doc_references_script(self) -> None:
+        content = (DOCS_DIR / "design-docs" / "deployment-modes.md").read_text()
+        assert "run-local-stack" in content, (
+            "deployment-modes.md should reference run-local-stack script"
+        )
+
+
+# ---------------------------------------------------------------------------
+# AGENT.md cross-reference validation
+# ---------------------------------------------------------------------------
+
+
+class TestAgentMdCrossReferences:
+    """AGENT.md references should point to real files and conventions."""
+
+    @pytest.fixture()
+    def agent_text(self) -> str:
+        return (REPO_ROOT / "AGENT.md").read_text()
+
+    @pytest.mark.parametrize(
+        "path_fragment",
+        [
+            "src/helping_hands/lib/hands/v1/hand/",
+            "src/helping_hands/lib/meta/tools/filesystem.py",
+            "src/helping_hands/lib/ai_providers/",
+            "src/helping_hands/lib/hands/v1/hand/model_provider.py",
+        ],
+    )
+    def test_referenced_paths_exist(self, path_fragment: str) -> None:
+        full_path = REPO_ROOT / path_fragment
+        assert full_path.exists(), (
+            f"AGENT.md references '{path_fragment}' which does not exist"
+        )
+
+    def test_readme_reference(self, agent_text: str) -> None:
+        assert "README.md" in agent_text, "AGENT.md should reference README.md"
+
+    def test_code_style_matches_claude_md(self, agent_text: str) -> None:
+        claude_text = (REPO_ROOT / "CLAUDE.md").read_text()
+        assert "ruff" in agent_text and "ruff" in claude_text, (
+            "Both AGENT.md and CLAUDE.md should reference ruff"
+        )
+        assert "88" in agent_text and "88" in claude_text, (
+            "Both should agree on line length 88"
+        )
