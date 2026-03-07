@@ -7027,11 +7027,15 @@ class TestTestFileNamingConvention:
         self, test_files: list[Path]
     ) -> None:
         for f in test_files:
-            assert f.name.startswith("test_"), f"Test file should start with test_: {f.name}"
+            assert f.name.startswith("test_"), (
+                f"Test file should start with test_: {f.name}"
+            )
 
     def test_no_test_files_in_subdirectories(self) -> None:
         tests_dir = REPO_ROOT / "tests"
-        subdirs = [d for d in tests_dir.iterdir() if d.is_dir() and d.name != "__pycache__"]
+        subdirs = [
+            d for d in tests_dir.iterdir() if d.is_dir() and d.name != "__pycache__"
+        ]
         for subdir in subdirs:
             test_files = list(subdir.glob("test_*.py"))
             assert len(test_files) == 0, (
@@ -7099,10 +7103,7 @@ class TestDesignDocMinimumSections:
     @pytest.fixture()
     def design_doc_files(self) -> list[Path]:
         dd = DOCS_DIR / "design-docs"
-        return sorted(
-            f for f in dd.glob("*.md")
-            if f.name != "index.md"
-        )
+        return sorted(f for f in dd.glob("*.md") if f.name != "index.md")
 
     def test_design_docs_have_headings(self, design_doc_files: list[Path]) -> None:
         for doc in design_doc_files:
@@ -7121,9 +7122,7 @@ class TestDesignDocMinimumSections:
                 f"found {len(content)}"
             )
 
-    def test_design_doc_count_matches_index(
-        self, design_doc_files: list[Path]
-    ) -> None:
+    def test_design_doc_count_matches_index(self, design_doc_files: list[Path]) -> None:
         index_text = (DOCS_DIR / "design-docs" / "index.md").read_text()
         index_links = re.findall(r"\(([^)]+\.md)\)", index_text)
         assert len(design_doc_files) == len(index_links), (
@@ -7155,7 +7154,9 @@ class TestTechDebtTrackerActiveItems:
             if in_table and header_seen and line.startswith("|"):
                 cols = [c.strip() for c in line.split("|")]
                 # cols[0] is empty (before first |), cols[1]=Item, cols[2]=Priority
-                assert len(cols) >= 5, f"Table row should have at least 4 columns: {line}"
+                assert len(cols) >= 5, (
+                    f"Table row should have at least 4 columns: {line}"
+                )
                 priority = cols[2]
                 assert priority in {"High", "Medium", "Low", "None"}, (
                     f"Priority should be High/Medium/Low/None, got: '{priority}'"
@@ -7172,7 +7173,12 @@ class TestTechDebtTrackerActiveItems:
                 continue
             if in_active and line.startswith("## "):
                 break
-            if in_active and line.startswith("|") and "Item" not in line and "---" not in line:
+            if (
+                in_active
+                and line.startswith("|")
+                and "Item" not in line
+                and "---" not in line
+            ):
                 cols = [c.strip() for c in line.split("|")]
                 if len(cols) >= 4:
                     module = cols[3]
