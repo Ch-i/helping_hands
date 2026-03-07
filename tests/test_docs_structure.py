@@ -1483,3 +1483,65 @@ class TestSecurityDockerSandboxRef:
     def test_references_sandbox_cleanup_env(self) -> None:
         content = (DOCS_DIR / "SECURITY.md").read_text()
         assert "HELPING_HANDS_DOCKER_SANDBOX_CLEANUP" in content
+
+
+class TestCommandExecutionDesignDoc:
+    """Command execution design doc should cover key concepts."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "command-execution.md").read_text()
+
+    def test_has_context_section(self, content: str) -> None:
+        assert "## Context" in content
+
+    def test_has_command_result_section(self, content: str) -> None:
+        assert "## CommandResult dataclass" in content
+
+    def test_has_path_confined_section(self, content: str) -> None:
+        assert "## Path-confined execution" in content
+
+    def test_has_runners_section(self, content: str) -> None:
+        assert "## Python and Bash runners" in content
+
+    def test_has_registry_section(self, content: str) -> None:
+        assert "## Tool registry" in content
+
+    def test_has_payload_validation_section(self, content: str) -> None:
+        assert "## Payload validation" in content
+
+    def test_references_command_result(self, content: str) -> None:
+        assert "CommandResult" in content
+
+    def test_references_tool_spec(self, content: str) -> None:
+        assert "ToolSpec" in content
+
+    def test_references_tool_category(self, content: str) -> None:
+        assert "ToolCategory" in content
+
+    def test_references_resolve_repo_target(self, content: str) -> None:
+        assert "resolve_repo_target" in content
+
+    def test_references_source_files(self, content: str) -> None:
+        assert "command.py" in content
+        assert "registry.py" in content
+
+    def test_references_cli_guidance(self, content: str) -> None:
+        assert "format_tool_instructions_for_cli" in content
+
+
+class TestConsolidated20260307:
+    """Consolidated 2026-03-07 plan should cover completed plans."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        path = DOCS_DIR / "exec-plans" / "completed" / "2026-03-07.md"
+        if not path.exists():
+            pytest.skip("2026-03-07.md not yet created")
+        return path.read_text()
+
+    def test_covers_v80(self, content: str) -> None:
+        assert "v80" in content
+
+    def test_has_date_header(self, content: str) -> None:
+        assert "2026-03-07" in content

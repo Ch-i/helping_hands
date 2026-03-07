@@ -26,6 +26,7 @@ Index of design documents for helping_hands.
 - [Task Lifecycle](task-lifecycle.md) — Celery task enqueue, progress streaming, update buffering, result normalization
 - [Web Tools](web-tools.md) — DuckDuckGo search, URL browsing, HTML extraction, content truncation
 - [Docker Sandbox](docker-sandbox.md) — MicroVM isolation via Docker Desktop sandboxes, lifecycle, env forwarding
+- [Command Execution](command-execution.md) — Path-confined Python/Bash runners, tool registry, CLI guidance translation
 
 ## Adding a design doc
 

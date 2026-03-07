@@ -8,9 +8,8 @@ _No active plans._
 
 ## Completed plans
 
-- [Docs and Testing v80](exec-plans/completed/docs-and-testing-v80.md) --
-  Docker sandbox design doc; consolidate v69-v79 into 2026-03-06.md; extended docs validation tests (docker-sandbox doc content, consolidated plan coverage, security/architecture cross-references; 23 new); 1740 tests pass (completed 2026-03-07)
-
+- [2026-03-07 consolidated](exec-plans/completed/2026-03-07.md) --
+  v80-v81: Docker sandbox design doc, command execution design doc, plan consolidation, extended docs validation tests (docker-sandbox content, command-execution content, consolidated plan coverage, source references); 1740 -> 1754 tests (completed 2026-03-07)
 
 - [2026-03-06 consolidated](exec-plans/completed/2026-03-06.md) --
   v32-v79: PR description, schedule, E2E, server health, GitHub client, package re-exports, Docker sandbox, CLI subprocess, celery usage, iterative agents, atomic/LangGraph stream, frontend coverage to 82.3%, dead code docs, testing methodology, shared conftest fixtures, config refactor, Hand smoke tests, docs structure validation, 21 design docs (repo-indexing through web-tools); 1263 -> 1717 tests (completed 2026-03-06)
