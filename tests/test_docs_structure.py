@@ -2035,3 +2035,266 @@ class TestArchitectureDataFlowSections:
         assert "## Design principles" in arch_text, (
             "ARCHITECTURE.md is missing '## Design principles' section"
         )
+
+
+class TestTechDebtTrackerPriorityValues:
+    """Active tech-debt items should have recognized priority values."""
+
+    _VALID_PRIORITIES: ClassVar[set[str]] = {
+        "None",
+        "Low",
+        "Medium",
+        "High",
+        "Critical",
+    }
+
+    @pytest.fixture()
+    def tracker_text(self) -> str:
+        return (DOCS_DIR / "exec-plans" / "tech-debt-tracker.md").read_text()
+
+    def test_active_items_have_valid_priority(self, tracker_text: str) -> None:
+        """Each row in the Active items table must use a known priority."""
+        in_table = False
+        rows: list[str] = []
+        for line in tracker_text.splitlines():
+            if "## Active items" in line:
+                in_table = True
+                continue
+            if in_table and line.startswith("## "):
+                break
+            if in_table and line.startswith("|") and "---" not in line:
+                rows.append(line)
+        # Skip the header row
+        for row in rows[1:]:
+            cols = [c.strip() for c in row.split("|")]
+            if len(cols) >= 4:
+                priority = cols[2]
+                assert priority in self._VALID_PRIORITIES, (
+                    f"Tech-debt-tracker has unrecognized priority '{priority}' "
+                    f"(expected one of {self._VALID_PRIORITIES})"
+                )
+
+    def test_active_items_table_not_empty(self, tracker_text: str) -> None:
+        """The active items table should have at least one entry."""
+        assert "| " in tracker_text.split("## Active items")[1].split("## ")[0], (
+            "Tech-debt-tracker active items table appears empty"
+        )
+
+
+class TestReliabilityMdErrorHandlingSubsections:
+    """RELIABILITY.md should have subsections for each failure domain."""
+
+    @pytest.fixture()
+    def reliability_text(self) -> str:
+        return (DOCS_DIR / "RELIABILITY.md").read_text()
+
+    @pytest.mark.parametrize(
+        "subsection",
+        [
+            "### CLI hand subprocess failures",
+            "### Iterative hand failures",
+            "### Finalization failures",
+            "### Docker sandbox failures",
+            "### Async compatibility fallbacks",
+        ],
+    )
+    def test_error_handling_subsection_exists(
+        self, reliability_text: str, subsection: str
+    ) -> None:
+        assert subsection in reliability_text, (
+            f"RELIABILITY.md is missing error handling subsection '{subsection}'"
+        )
+
+    def test_heartbeat_monitoring_section(self, reliability_text: str) -> None:
+        assert "## Heartbeat monitoring" in reliability_text, (
+            "RELIABILITY.md is missing '## Heartbeat monitoring' section"
+        )
+
+    def test_idempotency_section(self, reliability_text: str) -> None:
+        assert "## Idempotency" in reliability_text, (
+            "RELIABILITY.md is missing '## Idempotency' section"
+        )
+
+
+class TestArchitectureHandTableCompleteness:
+    """ARCHITECTURE.md hand table should list all hand modules."""
+
+    @pytest.fixture()
+    def arch_text(self) -> str:
+        return (REPO_ROOT / "ARCHITECTURE.md").read_text()
+
+    @pytest.fixture()
+    def hand_modules(self) -> list[str]:
+        """Discover all .py files in the hand directory (excluding __init__)."""
+        hand_dir = REPO_ROOT / "src" / "helping_hands" / "lib" / "hands" / "v1" / "hand"
+        modules = []
+        for f in hand_dir.glob("*.py"):
+            if f.name != "__init__.py":
+                modules.append(f.stem)
+        cli_dir = hand_dir / "cli"
+        for f in cli_dir.glob("*.py"):
+            if f.name not in ("__init__.py", "base.py"):
+                modules.append(f.stem)
+        return sorted(modules)
+
+    def test_hand_table_references_all_modules(
+        self, arch_text: str, hand_modules: list[str]
+    ) -> None:
+        """Each hand module should be referenced in ARCHITECTURE.md."""
+        for mod in hand_modules:
+            # Module filenames like docker_sandbox_claude.py -> docker_sandbox_claude
+            assert (
+                f"{mod}.py" in arch_text or mod.replace("_", "") in arch_text.lower()
+            ), f"ARCHITECTURE.md hand table is missing reference to '{mod}.py'"
+
+
+class TestTestingMethodologyPatternReferences:
+    """testing-methodology.md should reference actual test patterns used."""
+
+    @pytest.fixture()
+    def methodology_text(self) -> str:
+        return (DOCS_DIR / "design-docs" / "testing-methodology.md").read_text()
+
+    def test_references_monkeypatch(self, methodology_text: str) -> None:
+        assert "monkeypatch" in methodology_text, (
+            "testing-methodology.md should reference monkeypatch isolation pattern"
+        )
+
+    def test_references_importorskip(self, methodology_text: str) -> None:
+        assert "importorskip" in methodology_text, (
+            "testing-methodology.md should reference importorskip pattern"
+        )
+
+    def test_references_dead_code_documentation(self, methodology_text: str) -> None:
+        assert "tech-debt-tracker" in methodology_text, (
+            "testing-methodology.md should reference tech-debt-tracker for dead code"
+        )
+
+    def test_coverage_targets_table_exists(self, methodology_text: str) -> None:
+        assert "## Coverage targets" in methodology_text, (
+            "testing-methodology.md should have a Coverage targets section"
+        )
+
+    def test_anti_patterns_section_exists(self, methodology_text: str) -> None:
+        assert "## Anti-patterns" in methodology_text, (
+            "testing-methodology.md should have an Anti-patterns section"
+        )
+
+
+class TestFrontendMdStructure:
+    """FRONTEND.md should document both UI surfaces and sync requirements."""
+
+    @pytest.fixture()
+    def frontend_text(self) -> str:
+        return (DOCS_DIR / "FRONTEND.md").read_text()
+
+    def test_inline_html_section(self, frontend_text: str) -> None:
+        assert "Inline HTML" in frontend_text, (
+            "FRONTEND.md should document the inline HTML UI"
+        )
+
+    def test_react_frontend_section(self, frontend_text: str) -> None:
+        assert "React frontend" in frontend_text, (
+            "FRONTEND.md should document the React frontend"
+        )
+
+    def test_sync_requirements_section(self, frontend_text: str) -> None:
+        assert "## Sync requirements" in frontend_text, (
+            "FRONTEND.md should have a 'Sync requirements' section"
+        )
+
+    def test_testing_strategy_section(self, frontend_text: str) -> None:
+        assert "## Testing strategy" in frontend_text, (
+            "FRONTEND.md should have a 'Testing strategy' section"
+        )
+
+    def test_api_endpoints_table(self, frontend_text: str) -> None:
+        assert "## API endpoints" in frontend_text, (
+            "FRONTEND.md should have an API endpoints section"
+        )
+
+    def test_component_structure_section(self, frontend_text: str) -> None:
+        assert "### Component structure" in frontend_text, (
+            "FRONTEND.md should have a component structure section"
+        )
+
+
+class TestDocsIndexDocumentationMap:
+    """docs/index.md documentation map should list all top-level docs."""
+
+    @pytest.fixture()
+    def index_text(self) -> str:
+        return (DOCS_DIR / "index.md").read_text()
+
+    @pytest.mark.parametrize(
+        "doc_name",
+        [
+            "ARCHITECTURE.md",
+            "AGENTS.md",
+            "DESIGN.md",
+            "FRONTEND.md",
+            "SECURITY.md",
+            "RELIABILITY.md",
+            "PRODUCT_SENSE.md",
+            "QUALITY_SCORE.md",
+            "PLANS.md",
+        ],
+    )
+    def test_top_level_doc_listed(self, index_text: str, doc_name: str) -> None:
+        assert doc_name in index_text, (
+            f"docs/index.md documentation map is missing reference to {doc_name}"
+        )
+
+    def test_design_docs_link(self, index_text: str) -> None:
+        assert "design-docs/index.md" in index_text, (
+            "docs/index.md should link to design-docs/index.md"
+        )
+
+    def test_product_specs_link(self, index_text: str) -> None:
+        assert "product-specs/index.md" in index_text, (
+            "docs/index.md should link to product-specs/index.md"
+        )
+
+
+class TestCompletedPlanTestCountFormat:
+    """Completed plan summaries in PLANS.md should mention test counts."""
+
+    @pytest.fixture()
+    def plans_text(self) -> str:
+        return (DOCS_DIR / "PLANS.md").read_text()
+
+    def test_completed_plans_mention_test_counts(self, plans_text: str) -> None:
+        """Each completed plan summary should include a test count reference."""
+        completed_section = plans_text.split("## Completed plans")[1]
+        if "## " in completed_section:
+            completed_section = completed_section.split("## ")[0]
+        # Gather multi-line plan entries (start with "- [", continuation indented)
+        entries: list[str] = []
+        current: list[str] = []
+        for line in completed_section.splitlines():
+            if line.strip().startswith("- ["):
+                if current:
+                    entries.append(" ".join(current))
+                current = [line.strip()]
+            elif current and line.strip() and not line.strip().startswith("- "):
+                current.append(line.strip())
+        if current:
+            entries.append(" ".join(current))
+        assert len(entries) > 0, "PLANS.md should have completed plan entries"
+        for entry in entries:
+            assert "tests" in entry.lower(), (
+                f"Completed plan entry should mention test counts: {entry[:80]}..."
+            )
+
+    def test_completed_plans_have_date_links(self, plans_text: str) -> None:
+        """Each completed plan should link to a date-stamped file."""
+        completed_section = plans_text.split("## Completed plans")[1]
+        plan_lines = [
+            line
+            for line in completed_section.splitlines()
+            if line.strip().startswith("- [")
+        ]
+        for line in plan_lines:
+            assert re.search(r"\d{4}-\d{2}-\d{2}", line), (
+                f"Completed plan entry should have a YYYY-MM-DD date: {line[:80]}..."
+            )
