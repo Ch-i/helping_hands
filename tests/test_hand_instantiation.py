@@ -96,6 +96,56 @@ class TestHandInstantiation:
         hand = BasicAtomicHand(config=config, repo_index=ri)
         assert isinstance(hand, Hand)
 
+    @pytest.mark.parametrize(
+        "hand_cls",
+        _CONCRETE_HANDS,
+        ids=[c.__name__ for c in _CONCRETE_HANDS],
+    )
+    def test_has_run_method(self, hand_cls, _hand_deps) -> None:
+        config, ri = _hand_deps
+        hand = hand_cls(config=config, repo_index=ri)
+        assert callable(getattr(hand, "run", None))
+
+    @pytest.mark.parametrize(
+        "hand_cls",
+        _CONCRETE_HANDS,
+        ids=[c.__name__ for c in _CONCRETE_HANDS],
+    )
+    def test_has_stream_method(self, hand_cls, _hand_deps) -> None:
+        config, ri = _hand_deps
+        hand = hand_cls(config=config, repo_index=ri)
+        assert callable(getattr(hand, "stream", None))
+
+    @pytest.mark.parametrize(
+        "hand_cls",
+        _CONCRETE_HANDS,
+        ids=[c.__name__ for c in _CONCRETE_HANDS],
+    )
+    def test_has_interrupt_method(self, hand_cls, _hand_deps) -> None:
+        config, ri = _hand_deps
+        hand = hand_cls(config=config, repo_index=ri)
+        assert callable(getattr(hand, "interrupt", None))
+
+    @pytest.mark.parametrize(
+        "hand_cls",
+        _CONCRETE_HANDS,
+        ids=[c.__name__ for c in _CONCRETE_HANDS],
+    )
+    def test_default_auto_pr_is_true(self, hand_cls, _hand_deps) -> None:
+        config, ri = _hand_deps
+        hand = hand_cls(config=config, repo_index=ri)
+        assert hand.auto_pr is True
+
+    @pytest.mark.parametrize(
+        "hand_cls",
+        _CONCRETE_HANDS,
+        ids=[c.__name__ for c in _CONCRETE_HANDS],
+    )
+    def test_default_fix_ci_is_false(self, hand_cls, _hand_deps) -> None:
+        config, ri = _hand_deps
+        hand = hand_cls(config=config, repo_index=ri)
+        assert hand.fix_ci is False
+
 
 class TestHandResponseConstruction:
     """HandResponse dataclass construction tests."""
@@ -118,3 +168,18 @@ class TestHandResponseConstruction:
         a = HandResponse(message="x")
         b = HandResponse(message="y")
         assert a != b
+
+    def test_default_metadata_is_independent(self) -> None:
+        """Each instance gets its own metadata dict."""
+        a = HandResponse(message="x")
+        b = HandResponse(message="y")
+        a.metadata["key"] = "value"
+        assert "key" not in b.metadata
+
+    def test_repr_contains_message(self) -> None:
+        resp = HandResponse(message="done")
+        assert "done" in repr(resp)
+
+    def test_metadata_default_is_dict(self) -> None:
+        resp = HandResponse(message="test")
+        assert isinstance(resp.metadata, dict)
