@@ -5718,16 +5718,12 @@ class TestRepoIndexingDesignDocSourceConsistency:
 
     def test_repo_index_class_in_source(self) -> None:
         """RepoIndex should be defined in lib/repo.py."""
-        source = (
-            REPO_ROOT / "src" / "helping_hands" / "lib" / "repo.py"
-        ).read_text()
+        source = (REPO_ROOT / "src" / "helping_hands" / "lib" / "repo.py").read_text()
         assert "class RepoIndex" in source
 
     def test_from_path_in_source(self) -> None:
         """from_path classmethod should be defined in lib/repo.py."""
-        source = (
-            REPO_ROOT / "src" / "helping_hands" / "lib" / "repo.py"
-        ).read_text()
+        source = (REPO_ROOT / "src" / "helping_hands" / "lib" / "repo.py").read_text()
         assert "def from_path" in source
 
     def test_design_doc_in_index(self) -> None:
