@@ -168,3 +168,133 @@ class TestFromEnvVerbose:
         """Explicit override can set verbose=False."""
         config = Config.from_env(overrides={"verbose": False})
         assert config.verbose is False
+
+    def test_verbose_override_true(self) -> None:
+        """Explicit override can set verbose=True."""
+        config = Config.from_env(overrides={"verbose": True})
+        assert config.verbose is True
+
+
+class TestLoadEnvFilesNonDirRepo:
+    def test_non_directory_repo_skips_repo_dotenv(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When repo path is not a directory, only cwd dotenv is loaded."""
+        loaded_paths: list[Path] = []
+
+        def fake_load_dotenv(path: Path, override: bool = False) -> bool:
+            loaded_paths.append(path)
+            return True
+
+        monkeypatch.setattr(config_module, "load_dotenv", fake_load_dotenv)
+        monkeypatch.chdir(tmp_path)
+
+        fake_repo = str(tmp_path / "nonexistent")
+        config_module._load_env_files(repo=fake_repo)
+
+        # Only cwd .env should be loaded, not the repo .env
+        assert len(loaded_paths) == 1
+        assert loaded_paths[0] == tmp_path / ".env"
+
+    def test_none_repo_skips_repo_dotenv(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When repo is None, only cwd dotenv is loaded."""
+        loaded_paths: list[Path] = []
+
+        def fake_load_dotenv(path: Path, override: bool = False) -> bool:
+            loaded_paths.append(path)
+            return True
+
+        monkeypatch.setattr(config_module, "load_dotenv", fake_load_dotenv)
+        monkeypatch.chdir(tmp_path)
+
+        config_module._load_env_files(repo=None)
+        assert len(loaded_paths) == 1
+
+
+class TestConfigPathField:
+    def test_config_path_default_is_none(self) -> None:
+        config = Config()
+        assert config.config_path is None
+
+    def test_config_path_can_be_set(self, tmp_path: Path) -> None:
+        config = Config(config_path=tmp_path / "config.toml")
+        assert config.config_path == tmp_path / "config.toml"
+
+    def test_config_path_is_frozen(self, tmp_path: Path) -> None:
+        config = Config(config_path=tmp_path / "config.toml")
+        with pytest.raises(FrozenInstanceError):
+            config.config_path = None  # type: ignore[misc]
+
+
+class TestFromEnvToolsAndSkillsStringOverrides:
+    def test_string_tools_override_parsed(self) -> None:
+        """String overrides for enabled_tools are normalized."""
+        config = Config.from_env(
+            overrides={"enabled_tools": "python.run_code, bash.run_script"}
+        )
+        assert len(config.enabled_tools) == 2
+
+    def test_string_skills_override_parsed(self) -> None:
+        """String overrides for enabled_skills are normalized."""
+        config = Config.from_env(overrides={"enabled_skills": "execution, web"})
+        assert config.enabled_skills == ("execution", "web")
+
+    def test_tuple_tools_override_normalized(self) -> None:
+        """Tuple overrides for enabled_tools are normalized (underscores to dashes)."""
+        config = Config.from_env(overrides={"enabled_tools": ("python.run_code",)})
+        assert config.enabled_tools == ("python.run-code",)
+
+
+class TestFromEnvPrecedence:
+    def test_env_model_used_when_no_override(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HELPING_HANDS_MODEL", "env-model")
+        config = Config.from_env()
+        assert config.model == "env-model"
+
+    def test_override_beats_env_for_model(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """String overrides win over env vars."""
+        monkeypatch.setenv("HELPING_HANDS_MODEL", "env-model")
+        config = Config.from_env(overrides={"model": "override-model"})
+        assert config.model == "override-model"
+
+    def test_false_override_beats_truthy_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """False override for a boolean field overrides a truthy env var."""
+        monkeypatch.setenv("HELPING_HANDS_ENABLE_EXECUTION", "1")
+        config = Config.from_env(overrides={"enable_execution": False})
+        assert config.enable_execution is False
+
+    def test_no_overrides_no_env_uses_defaults(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With no env vars and no overrides, defaults are used."""
+        monkeypatch.delenv("HELPING_HANDS_MODEL", raising=False)
+        monkeypatch.delenv("HELPING_HANDS_VERBOSE", raising=False)
+        monkeypatch.delenv("HELPING_HANDS_ENABLE_EXECUTION", raising=False)
+        monkeypatch.delenv("HELPING_HANDS_ENABLE_WEB", raising=False)
+        monkeypatch.delenv("HELPING_HANDS_USE_NATIVE_CLI_AUTH", raising=False)
+        monkeypatch.delenv("HELPING_HANDS_TOOLS", raising=False)
+        monkeypatch.delenv("HELPING_HANDS_SKILLS", raising=False)
+        config = Config.from_env()
+        assert config.model == "default"
+        assert config.verbose is True
+        assert config.enable_execution is False
+        assert config.enabled_tools == ()
+
+    def test_empty_overrides_dict_treated_as_no_overrides(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("HELPING_HANDS_MODEL", "env-model")
+        config = Config.from_env(overrides={})
+        assert config.model == "env-model"
+
+    def test_repo_override_sets_repo_field(self) -> None:
+        config = Config.from_env(overrides={"repo": "/tmp/myrepo"})
+        assert config.repo == "/tmp/myrepo"

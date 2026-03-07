@@ -51,7 +51,7 @@ Target Python: 3.12+
 | Module | Current state | Target | Notes |
 |---|---|---|---|
 | Top-level packages | Excellent (100%) | Maintained | `helping_hands`, `lib`, `cli`, `server`, `hands` package import/docstring tests added in v67 |
-| `lib/config.py` | Good (env loading, overrides, dotenv) | 90%+ | Normalization edge cases added in v5; `_load_env_files` no-dotenv early return, bool tool/skill override normalization added in v30; refactored to monkeypatch, frozen immutability, repo dotenv loading, verbose truthy/falsy/override tests added in v66 |
+| `lib/config.py` | Excellent (32 tests, all paths) | Maintained | Normalization edge cases added in v5; `_load_env_files` no-dotenv early return, bool tool/skill override normalization added in v30; refactored to monkeypatch, frozen immutability, repo dotenv loading, verbose truthy/falsy/override tests added in v66; `_load_env_files` non-dir repo path, config_path field, string/tuple tool/skill overrides, from_env precedence tests added in v101 |
 | `lib/repo.py` | Excellent (12 tests, all paths) | Maintained | No gaps identified |
 | `lib/meta/tools/filesystem.py` | Excellent (25+ tests, security) | Maintained | Edge cases added in v5 |
 | `lib/meta/tools/command.py` | Good (execution paths) | 90%+ | `CommandResult`, `_normalize_args`, `_resolve_cwd` added in v5 |
