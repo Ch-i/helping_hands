@@ -5233,3 +5233,413 @@ class TestSecurityRecommendationCoverage:
         assert topic.lower() in rec_section.lower(), (
             f"SECURITY.md recommendations should cover: {topic}"
         )
+
+
+# ---------------------------------------------------------------------------
+# v94 — Hand abstraction design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestHandAbstractionDesignDoc:
+    """hand-abstraction.md should document the Hand class hierarchy."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "hand-abstraction.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "Decision",
+        "Extension hierarchy",
+        "Key design choices",
+        "Alternatives considered",
+        "Consequences",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"hand-abstraction.md missing section: {section}"
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "Hand",
+        "E2EHand",
+        "IterativeHand",
+        "BasicLangGraphHand",
+        "BasicAtomicHand",
+        "_TwoPhaseCLIHand",
+        "ClaudeCodeHand",
+        "CodexCLIHand",
+        "run(",
+        "stream(",
+        "_finalize_repo_pr",
+        "base.py",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"hand-abstraction.md should reference: {ref}"
+
+    def test_finalization_in_base_class(self, content: str) -> None:
+        """Should explain that finalization is centralized."""
+        assert "base class" in content.lower()
+        assert "finalization" in content.lower() or "finalize" in content.lower()
+
+    def test_config_injection(self, content: str) -> None:
+        """Should document Config + RepoIndex injection."""
+        assert "Config" in content
+        assert "RepoIndex" in content
+
+    def test_source_path_exists(self) -> None:
+        """The referenced source file should exist."""
+        assert (
+            REPO_ROOT
+            / "src"
+            / "helping_hands"
+            / "lib"
+            / "hands"
+            / "v1"
+            / "hand"
+            / "base.py"
+        ).exists()
+
+
+# ---------------------------------------------------------------------------
+# v94 — Filesystem security design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestFilesystemSecurityDesignDoc:
+    """filesystem-security.md should document path confinement."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "filesystem-security.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "Decision",
+        "Resolution algorithm",
+        "Shared by all consumers",
+        "Error behavior",
+        "Companion controls",
+        "Alternatives considered",
+        "Consequences",
+        "Test coverage",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"filesystem-security.md missing section: {section}"
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "resolve_repo_target()",
+        "filesystem.py",
+        "read_text_file",
+        "write_text_file",
+        "mkdir_path",
+        "path_exists",
+        "ValueError",
+        "MCP",
+        "@@FILE",
+        "@@READ",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"filesystem-security.md should reference: {ref}"
+
+    def test_traversal_attacks_mentioned(self, content: str) -> None:
+        """Should mention path traversal attack vectors."""
+        assert "../" in content
+        assert "symlink" in content.lower()
+
+    def test_consumer_table_present(self, content: str) -> None:
+        """Should have a table of consumers."""
+        assert "Consumer" in content
+        assert "Entry point" in content
+
+    def test_source_path_exists(self) -> None:
+        """The referenced source file should exist."""
+        assert (
+            REPO_ROOT
+            / "src"
+            / "helping_hands"
+            / "lib"
+            / "meta"
+            / "tools"
+            / "filesystem.py"
+        ).exists()
+
+
+# ---------------------------------------------------------------------------
+# v94 — GitHub client design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestGitHubClientDesignDoc:
+    """github-client.md should document auth, operations, and token safety."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "github-client.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "Authentication",
+        "Token safety",
+        "Repository operations",
+        "Pull request lifecycle",
+        "CI check aggregation",
+        "Subprocess helper",
+        "Alternatives considered",
+        "Consequences",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"github-client.md missing section: {section}"
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "GitHubClient",
+        "GITHUB_TOKEN",
+        "GH_TOKEN",
+        "x-access-token",
+        "_redact_sensitive()",
+        "clone()",
+        "create_pr()",
+        "get_check_runs()",
+        "upsert_pr_comment()",
+        "PyGithub",
+        "_run_git()",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"github-client.md should reference: {ref}"
+
+    def test_check_run_conclusion_table(self, content: str) -> None:
+        """Should document all 5 check run conclusions."""
+        for conclusion in ("no_checks", "pending", "success", "failure", "mixed"):
+            assert conclusion in content, (
+                f"github-client.md should document conclusion: {conclusion}"
+            )
+
+    def test_token_fallback_chain(self, content: str) -> None:
+        """Should document the 3-level token resolution."""
+        assert "token=" in content
+        assert "GITHUB_TOKEN" in content
+        assert "GH_TOKEN" in content
+
+    def test_source_path_exists(self) -> None:
+        """The referenced source file should exist."""
+        assert (REPO_ROOT / "src" / "helping_hands" / "lib" / "github.py").exists()
+
+
+# ---------------------------------------------------------------------------
+# v94 — CI pipeline design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestCIPipelineDesignDoc:
+    """ci-pipeline.md should document CI and docs workflows."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "ci-pipeline.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "CI workflow",
+        "Backend job",
+        "Frontend job",
+        "Design decisions",
+        "Docs workflow",
+        "Environment variables",
+        "Consequences",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"ci-pipeline.md missing section: {section}"
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "ci.yml",
+        "ruff",
+        "pytest",
+        "Codecov",
+        "actions/checkout",
+        "uv",
+        "Node.js",
+        "Vitest",
+        "ESLint",
+        "mkdocs",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"ci-pipeline.md should reference: {ref}"
+
+    def test_python_version_matrix(self, content: str) -> None:
+        """Should document the Python version matrix."""
+        for version in ("3.12", "3.13", "3.14"):
+            assert version in content, f"ci-pipeline.md should mention Python {version}"
+
+    def test_env_vars_table(self, content: str) -> None:
+        """Should document key environment variables."""
+        for var in ("GITHUB_TOKEN", "CODECOV_TOKEN"):
+            assert var in content, f"ci-pipeline.md should document env var: {var}"
+
+    def test_concurrency_mentioned(self, content: str) -> None:
+        """Should document concurrency handling."""
+        assert "cancel-in-progress" in content
+
+
+# ---------------------------------------------------------------------------
+# v94 — MCP architecture design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestMCPArchitectureDesignDoc:
+    """mcp-architecture.md should document tools, transport, and isolation."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "mcp-architecture.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "Transport selection",
+        "Tool registration",
+        "Repository tools",
+        "Execution tools",
+        "Repo isolation",
+        "Error handling",
+        "Design decisions",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"mcp-architecture.md missing section: {section}"
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "FastMCP",
+        "stdio",
+        "http",
+        "index_repo",
+        "read_file",
+        "write_file",
+        "run_python_code",
+        "run_bash_script",
+        "web_search",
+        "web_browse",
+        "build_feature",
+        "resolve_repo_target()",
+        "RepoIndex",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"mcp-architecture.md should reference: {ref}"
+
+    def test_transport_table(self, content: str) -> None:
+        """Should have a transport mode comparison table."""
+        assert "Mode" in content
+        assert "Flag" in content
+
+    def test_error_types_documented(self, content: str) -> None:
+        """Should document all error types."""
+        for err in (
+            "FileNotFoundError",
+            "IsADirectoryError",
+            "UnicodeError",
+            "ValueError",
+        ):
+            assert err in content, f"mcp-architecture.md should document error: {err}"
+
+    def test_source_path_exists(self) -> None:
+        """The referenced source file should exist."""
+        assert (
+            REPO_ROOT / "src" / "helping_hands" / "server" / "mcp_server.py"
+        ).exists()
+
+    def test_no_auth_documented(self, content: str) -> None:
+        """Should document the no-authentication decision."""
+        assert "authentication" in content.lower() or "auth" in content.lower()
+
+
+# ---------------------------------------------------------------------------
+# v94 — Conftest fixture validation
+# ---------------------------------------------------------------------------
+
+
+class TestConftestFixtureCompleteness:
+    """conftest.py fixtures should cover the main shared patterns."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "tests" / "conftest.py").read_text()
+
+    EXPECTED_FIXTURES: ClassVar[list[str]] = [
+        "repo_index",
+        "fake_config",
+        "make_cli_hand",
+        "mock_github_client",
+        "make_fake_module",
+    ]
+
+    @pytest.mark.parametrize("fixture", EXPECTED_FIXTURES)
+    def test_fixture_defined(self, content: str, fixture: str) -> None:
+        assert f"def {fixture}" in content, (
+            f"conftest.py should define fixture: {fixture}"
+        )
+
+    def test_repo_index_uses_tmp_path(self, content: str) -> None:
+        """repo_index fixture should use tmp_path for isolation."""
+        assert "tmp_path" in content
+
+    def test_mock_github_client_has_context_manager(self, content: str) -> None:
+        """mock_github_client should implement context manager protocol."""
+        assert "__enter__" in content
+        assert "__exit__" in content
+
+    def test_make_cli_hand_is_factory(self, content: str) -> None:
+        """make_cli_hand should be a factory returning hand instances."""
+        assert "def _factory" in content
+        assert "hand_cls" in content
+
+    def test_make_fake_module_returns_module_type(self, content: str) -> None:
+        """make_fake_module should create ModuleType instances."""
+        assert "ModuleType" in content
+
+
+class TestConftestFixtureUsage:
+    """Shared fixtures should be used across multiple test files."""
+
+    @pytest.fixture()
+    def test_files(self) -> list[tuple[str, str]]:
+        """Return (filename, content) for all test files."""
+        tests_dir = REPO_ROOT / "tests"
+        return [(f.name, f.read_text()) for f in sorted(tests_dir.glob("test_*.py"))]
+
+    def test_make_cli_hand_used_in_multiple_files(
+        self, test_files: list[tuple[str, str]]
+    ) -> None:
+        """make_cli_hand fixture should be used in multiple test files."""
+        users = [name for name, content in test_files if "make_cli_hand" in content]
+        assert len(users) >= 2, (
+            f"make_cli_hand should be used in >= 2 test files, found: {users}"
+        )
+
+    def test_mock_github_client_used(self, test_files: list[tuple[str, str]]) -> None:
+        """mock_github_client fixture should be used in at least one test file."""
+        users = [
+            name for name, content in test_files if "mock_github_client" in content
+        ]
+        assert len(users) >= 1, (
+            "mock_github_client should be used in at least one test file"
+        )
+
+    def test_fake_config_used(self, test_files: list[tuple[str, str]]) -> None:
+        """fake_config fixture should be used in at least one test file."""
+        users = [name for name, content in test_files if "fake_config" in content]
+        assert len(users) >= 1, "fake_config should be used in at least one test file"
