@@ -4561,3 +4561,374 @@ class TestArchitectureMdLayers:
         assert layer in arch_text, (
             f"ARCHITECTURE.md missing layer documentation: {layer}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Config-loading design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestConfigLoadingDesignDoc:
+    """config-loading.md should document precedence, frozen dataclass, dotenv."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "config-loading.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "Precedence",
+        "Frozen dataclass",
+        "Dotenv integration",
+        "Boolean normalization",
+        "Tool and skill selection",
+        "Consequences",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"config-loading.md missing section: {section}"
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "Config.from_env()",
+        "_load_env_files()",
+        "normalize_tool_selection()",
+        "normalize_skill_selection()",
+        "HELPING_HANDS_",
+        "frozen=True",
+        "override=False",
+        "python-dotenv",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"config-loading.md should reference: {ref}"
+
+    def test_precedence_order(self, content: str) -> None:
+        """Precedence chain should document all three sources."""
+        assert "dataclass defaults" in content
+        assert "env vars" in content
+        assert "CLI overrides" in content
+
+    def test_boolean_truthy_values(self, content: str) -> None:
+        """Should document the truthy value list."""
+        for val in ("1", "true", "yes"):
+            assert val in content.lower(), (
+                f"config-loading.md should mention truthy value: {val}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Default-prompts design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestDefaultPromptsDesignDoc:
+    """default-prompts.md should document the prompt structure and sharing."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "default-prompts.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "Decision",
+        "Prompt structure",
+        "Directive flow",
+        "Alternatives considered",
+        "Consequences",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"default-prompts.md missing section: {section}"
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "DEFAULT_SMOKE_TEST_PROMPT",
+        "lib/default_prompts.py",
+        "cli/main.py",
+        "server/app.py",
+        "@@READ",
+        "@@FILE",
+        "@@TOOL",
+        "test_default_prompts.py",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"default-prompts.md should reference: {ref}"
+
+    def test_conditional_tools_mentioned(self, content: str) -> None:
+        """Should mention conditional tool steps."""
+        assert "enable_execution" in content
+        assert "enable_web" in content
+
+    def test_shared_across_entry_points(self, content: str) -> None:
+        """Should explain that CLI and server share the same prompt."""
+        assert "CLI" in content
+        assert "server" in content
+
+
+# ---------------------------------------------------------------------------
+# Error-handling design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestErrorHandlingDesignDoc:
+    """error-handling.md should document all 8 recovery patterns."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "error-handling.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "Decision",
+        "Recovery patterns",
+        "Anti-patterns",
+        "Consequences",
+        "Alternatives considered",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"error-handling.md missing section: {section}"
+
+    RECOVERY_PATTERNS: ClassVar[list[str]] = [
+        "Exception suppression with fallback",
+        "Retry with modified command",
+        "Fallback command",
+        "Graceful degradation",
+        "Default branch fallback",
+        "Platform capability detection",
+        "Idle timeout with heartbeat",
+        "Async fallback chains",
+    ]
+
+    @pytest.mark.parametrize("pattern", RECOVERY_PATTERNS)
+    def test_recovery_pattern_documented(self, content: str, pattern: str) -> None:
+        assert pattern in content, (
+            f"error-handling.md missing recovery pattern: {pattern}"
+        )
+
+    def test_anti_patterns_listed(self, content: str) -> None:
+        """Should document at least 3 anti-patterns."""
+        anti_section = content.split("Anti-patterns")[-1].split("##")[0]
+        bullets = [
+            line for line in anti_section.splitlines() if line.strip().startswith("-")
+        ]
+        assert len(bullets) >= 3, (
+            "error-handling.md should list at least 3 anti-patterns"
+        )
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "_update_pr_description",
+        "_finalize_repo_pr",
+        "BasicAtomicHand",
+        "tech-debt-tracker.md",
+        "geteuid",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_source_code(self, content: str, ref: str) -> None:
+        assert ref in content, f"error-handling.md should reference: {ref}"
+
+
+# ---------------------------------------------------------------------------
+# Model-resolution design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestModelResolutionDesignDoc:
+    """model-resolution.md should document HandModel, resolution, adapters."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "model-resolution.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "HandModel dataclass",
+        "Resolution flow",
+        "Backend adapters",
+        "Design decisions",
+        "Consequences",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"model-resolution.md missing section: {section}"
+
+    RESOLUTION_STAGES: ClassVar[list[str]] = [
+        "Default",
+        "Provider name",
+        "Slash-separated",
+        "Prefix inference",
+    ]
+
+    @pytest.mark.parametrize("stage", RESOLUTION_STAGES)
+    def test_resolution_stage_documented(self, content: str, stage: str) -> None:
+        assert stage in content, (
+            f"model-resolution.md missing resolution stage: {stage}"
+        )
+
+    def test_langchain_adapter_table(self, content: str) -> None:
+        """LangChain adapter section should list provider mappings."""
+        assert "build_langchain_chat_model" in content
+        assert "ChatOpenAI" in content
+        assert "ChatAnthropic" in content
+
+    def test_atomic_adapter_section(self, content: str) -> None:
+        """Atomic adapter section should reference instructor."""
+        assert "build_atomic_client" in content
+        assert "instructor" in content
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "lib/hands/v1/hand/model_provider.py",
+        "lib/ai_providers/",
+        "HandModel",
+        "resolve_hand_model",
+        "PROVIDERS",
+        "frozen",
+        "_infer_provider_name",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"model-resolution.md should reference: {ref}"
+
+
+# ---------------------------------------------------------------------------
+# Deployment-modes design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestDeploymentModesDesignDoc:
+    """deployment-modes.md should document CLI, Server, and MCP modes."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "deployment-modes.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "CLI mode",
+        "Server mode",
+        "MCP mode",
+        "Shared layer",
+        "Consequences",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"deployment-modes.md missing section: {section}"
+
+    MODE_MODULES: ClassVar[list[str]] = [
+        "cli/main.py",
+        "server/app.py",
+        "server/celery_app.py",
+        "server/mcp_server.py",
+    ]
+
+    @pytest.mark.parametrize("module", MODE_MODULES)
+    def test_mode_module_referenced(self, content: str, module: str) -> None:
+        assert module in content, (
+            f"deployment-modes.md should reference module: {module}"
+        )
+
+    def test_comparison_table(self, content: str) -> None:
+        """Should include a comparison table across modes."""
+        assert "CLI" in content and "Server" in content and "MCP" in content
+        assert "Concurrency" in content or "Infrastructure" in content
+
+    SHARED_MODULES: ClassVar[list[str]] = [
+        "lib/config.py",
+        "lib/repo.py",
+        "lib/hands/v1/",
+        "lib/ai_providers/",
+        "lib/meta/tools/",
+        "lib/github.py",
+    ]
+
+    @pytest.mark.parametrize("module", SHARED_MODULES)
+    def test_shared_layer_module(self, content: str, module: str) -> None:
+        assert module in content, (
+            f"deployment-modes.md shared layer should list: {module}"
+        )
+
+    def test_mcp_tools_listed(self, content: str) -> None:
+        """MCP section should list available tools."""
+        assert "index_repo" in content
+        assert "build_feature" in content
+        assert "read_file" in content
+
+    def test_server_infrastructure(self, content: str) -> None:
+        """Server mode should mention Redis and Celery."""
+        assert "Redis" in content
+        assert "Celery" in content
+
+
+# ---------------------------------------------------------------------------
+# PR-description design doc content validation
+# ---------------------------------------------------------------------------
+
+
+class TestPrDescriptionDesignDoc:
+    """pr-description.md should document generation flow, parsing, fallbacks."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (DOCS_DIR / "design-docs" / "pr-description.md").read_text()
+
+    REQUIRED_SECTIONS: ClassVar[list[str]] = [
+        "Context",
+        "Generation flow",
+        "Prompt engineering",
+        "Parsing",
+        "Fallback chain",
+        "Diff handling",
+        "Environment configuration",
+        "Design decisions",
+    ]
+
+    @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
+    def test_has_required_section(self, content: str, section: str) -> None:
+        assert section in content, f"pr-description.md missing section: {section}"
+
+    EXPECTED_REFERENCES: ClassVar[list[str]] = [
+        "generate_pr_description",
+        "generate_commit_message",
+        "_finalize_repo_pr",
+        "pr_description.py",
+        "PR_TITLE:",
+        "PR_BODY:",
+        "COMMIT_MSG:",
+        "_commit_message_from_prompt",
+    ]
+
+    @pytest.mark.parametrize("ref", EXPECTED_REFERENCES)
+    def test_references_key_concept(self, content: str, ref: str) -> None:
+        assert ref in content, f"pr-description.md should reference: {ref}"
+
+    ENV_VARS: ClassVar[list[str]] = [
+        "HELPING_HANDS_DISABLE_PR_DESCRIPTION",
+        "HELPING_HANDS_PR_DESCRIPTION_TIMEOUT",
+        "HELPING_HANDS_PR_DESCRIPTION_DIFF_LIMIT",
+    ]
+
+    @pytest.mark.parametrize("env_var", ENV_VARS)
+    def test_env_var_documented(self, content: str, env_var: str) -> None:
+        assert env_var in content, (
+            f"pr-description.md should document env var: {env_var}"
+        )
+
+    def test_fallback_table(self, content: str) -> None:
+        """Fallback chain should be documented as a table."""
+        fallback_section = content.split("Fallback chain")[-1].split("##")[0]
+        assert "timeout" in fallback_section.lower()
+        assert "None" in fallback_section
+
+    def test_diff_sources_documented(self, content: str) -> None:
+        """Should document both diff sources."""
+        assert "git diff" in content
+        assert "base_branch" in content or "base branch" in content
