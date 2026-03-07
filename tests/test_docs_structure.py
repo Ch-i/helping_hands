@@ -7183,3 +7183,195 @@ class TestTechDebtTrackerActiveItems:
                 if len(cols) >= 4:
                     module = cols[3]
                     assert len(module) > 0, f"Active item should have module: {line}"
+
+
+# ---------------------------------------------------------------------------
+# CLAUDE.md build commands validation
+# ---------------------------------------------------------------------------
+
+
+class TestClaudeMdBuildCommands:
+    """Validate that CLAUDE.md build commands reference real tools and scripts."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "CLAUDE.md").read_text()
+
+    def test_uv_sync_command_present(self, content: str) -> None:
+        assert "uv sync --dev" in content
+
+    def test_ruff_check_command_present(self, content: str) -> None:
+        assert "uv run ruff check ." in content
+
+    def test_ruff_format_command_present(self, content: str) -> None:
+        assert "uv run ruff format" in content
+
+    def test_pytest_command_present(self, content: str) -> None:
+        assert "uv run pytest" in content
+
+    def test_pre_commit_command_present(self, content: str) -> None:
+        assert "uv run pre-commit" in content
+
+    def test_npm_frontend_commands_present(self, content: str) -> None:
+        assert "npm --prefix frontend" in content
+
+    def test_docker_compose_command_present(self, content: str) -> None:
+        assert "docker compose" in content
+
+    def test_local_stack_script_referenced(self, content: str) -> None:
+        assert "run-local-stack" in content
+
+    def test_ty_check_command_present(self, content: str) -> None:
+        assert "uv run ty check" in content
+
+    def test_references_python_312(self, content: str) -> None:
+        assert "3.12" in content
+
+
+# ---------------------------------------------------------------------------
+# README.md section validation
+# ---------------------------------------------------------------------------
+
+
+class TestReadmeSections:
+    """Validate README.md has expected sections and content."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "README.md").read_text()
+
+    def test_has_what_is_this_section(self, content: str) -> None:
+        assert "## What is this?" in content
+
+    def test_has_modes_section(self, content: str) -> None:
+        assert "### Modes" in content
+
+    def test_mentions_cli_mode(self, content: str) -> None:
+        assert "CLI mode" in content
+
+    def test_mentions_app_mode(self, content: str) -> None:
+        assert "App mode" in content
+
+    def test_mentions_helping_hands_command(self, content: str) -> None:
+        assert "helping-hands" in content
+
+    def test_mentions_all_backends(self, content: str) -> None:
+        backends = [
+            "basic-langgraph",
+            "basic-atomic",
+            "codexcli",
+            "claudecodecli",
+            "goose",
+            "geminicli",
+            "opencodecli",
+        ]
+        for backend in backends:
+            assert backend in content, f"Missing backend mention: {backend}"
+
+    def test_mentions_e2e_hand(self, content: str) -> None:
+        assert "E2EHand" in content
+
+    def test_mentions_github_token(self, content: str) -> None:
+        assert "token" in content.lower()
+
+
+# ---------------------------------------------------------------------------
+# AGENT.md ground rules and dependencies validation
+# ---------------------------------------------------------------------------
+
+
+class TestAgentMdGroundRules:
+    """Validate AGENT.md ground rules and structural consistency."""
+
+    @pytest.fixture()
+    def content(self) -> str:
+        return (REPO_ROOT / "AGENT.md").read_text()
+
+    def test_has_ground_rules_section(self, content: str) -> None:
+        assert "## Ground rules" in content
+
+    def test_ground_rules_count(self, content: str) -> None:
+        """Should have at least 4 numbered ground rules."""
+        lines = content.split("\n")
+        in_rules = False
+        rule_count = 0
+        for line in lines:
+            if "## Ground rules" in line:
+                in_rules = True
+                continue
+            if in_rules and line.startswith("## "):
+                break
+            if in_rules and re.match(r"^\d+\.\s", line):
+                rule_count += 1
+        assert rule_count >= 4, f"Expected >= 4 ground rules, found {rule_count}"
+
+    def test_has_code_style_section(self, content: str) -> None:
+        assert "## Code style" in content
+
+    def test_has_design_preferences_section(self, content: str) -> None:
+        assert "## Design preferences" in content
+
+    def test_mentions_ruff(self, content: str) -> None:
+        assert "ruff" in content
+
+    def test_mentions_uv(self, content: str) -> None:
+        assert "uv" in content
+
+    def test_mentions_pytest(self, content: str) -> None:
+        assert "pytest" in content
+
+    def test_auto_update_markers_present(self, content: str) -> None:
+        assert "[auto-update]" in content
+
+    def test_references_readme(self, content: str) -> None:
+        assert "README.md" in content
+
+
+# ---------------------------------------------------------------------------
+# Active plan structure validation (v100+)
+# ---------------------------------------------------------------------------
+
+
+class TestActivePlanV100:
+    """Validate the current active plan has proper structure."""
+
+    @pytest.fixture()
+    def active_plans(self) -> list[Path]:
+        active_dir = DOCS_DIR / "exec-plans" / "active"
+        if not active_dir.exists():
+            return []
+        return sorted(active_dir.glob("*.md"))
+
+    def test_at_most_one_active_plan(self, active_plans: list[Path]) -> None:
+        assert len(active_plans) <= 1, (
+            f"Expected at most 1 active plan, found: {[p.name for p in active_plans]}"
+        )
+
+    def test_active_plan_has_status(self, active_plans: list[Path]) -> None:
+        for plan in active_plans:
+            content = plan.read_text()
+            assert "**Status:**" in content, f"{plan.name} missing Status field"
+
+    def test_active_plan_has_created_date(self, active_plans: list[Path]) -> None:
+        for plan in active_plans:
+            content = plan.read_text()
+            assert "**Created:**" in content, f"{plan.name} missing Created field"
+
+    def test_active_plan_has_tasks_section(self, active_plans: list[Path]) -> None:
+        for plan in active_plans:
+            content = plan.read_text()
+            assert "## Tasks" in content, f"{plan.name} missing Tasks section"
+
+    def test_active_plan_has_completion_criteria(
+        self, active_plans: list[Path]
+    ) -> None:
+        for plan in active_plans:
+            content = plan.read_text()
+            assert "## Completion criteria" in content, (
+                f"{plan.name} missing Completion criteria"
+            )
+
+    def test_active_plan_tasks_use_checkboxes(self, active_plans: list[Path]) -> None:
+        for plan in active_plans:
+            content = plan.read_text()
+            assert "- [" in content, f"{plan.name} tasks should use checkboxes"
