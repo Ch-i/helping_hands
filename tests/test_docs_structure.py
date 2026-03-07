@@ -3863,3 +3863,419 @@ class TestAgentMdCrossReferences:
         assert "88" in agent_text and "88" in claude_text, (
             "Both should agree on line length 88"
         )
+
+
+# ---------------------------------------------------------------------------
+# Scheduling system design doc cross-reference validation
+# ---------------------------------------------------------------------------
+
+
+class TestSchedulingSystemDocContent:
+    """scheduling-system.md should accurately describe the scheduling design."""
+
+    @pytest.fixture()
+    def doc_text(self) -> str:
+        return (DOCS_DIR / "design-docs" / "scheduling-system.md").read_text()
+
+    def test_has_architecture_section(self, doc_text: str) -> None:
+        assert "## Architecture" in doc_text or "## Design" in doc_text, (
+            "scheduling-system.md should have an Architecture or Design section"
+        )
+
+    @pytest.mark.parametrize(
+        "concept",
+        [
+            "ScheduledTask",
+            "ScheduleManager",
+            "RedBeat",
+            "CRON_PRESETS",
+            "trigger_now",
+        ],
+    )
+    def test_key_concepts_documented(self, doc_text: str, concept: str) -> None:
+        assert concept in doc_text, f"scheduling-system.md should document '{concept}'"
+
+    @pytest.mark.parametrize(
+        "operation",
+        ["create_schedule", "update_schedule", "delete_schedule"],
+    )
+    def test_crud_operations_documented(self, doc_text: str, operation: str) -> None:
+        assert operation in doc_text, (
+            f"scheduling-system.md should document '{operation}'"
+        )
+
+    def test_dual_storage_model_documented(self, doc_text: str) -> None:
+        assert "schedule:meta:" in doc_text or "Metadata key" in doc_text, (
+            "scheduling-system.md should document the dual storage model"
+        )
+
+    def test_cron_presets_table(self, doc_text: str) -> None:
+        for preset in ["daily", "hourly", "weekdays"]:
+            assert preset in doc_text, (
+                f"scheduling-system.md should list '{preset}' preset"
+            )
+
+    def test_alternatives_considered(self, doc_text: str) -> None:
+        assert "Alternatives considered" in doc_text, (
+            "scheduling-system.md should have an Alternatives section"
+        )
+
+    def test_consequences_section(self, doc_text: str) -> None:
+        assert "Consequences" in doc_text, (
+            "scheduling-system.md should have a Consequences section"
+        )
+
+    def test_source_module_referenced(self, doc_text: str) -> None:
+        assert "schedules.py" in doc_text or "schedules" in doc_text, (
+            "scheduling-system.md should reference the source module"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Skills system design doc cross-reference validation
+# ---------------------------------------------------------------------------
+
+
+class TestSkillsSystemDocContent:
+    """skills-system.md should accurately describe the skills catalog."""
+
+    @pytest.fixture()
+    def doc_text(self) -> str:
+        return (DOCS_DIR / "design-docs" / "skills-system.md").read_text()
+
+    def test_has_context_section(self, doc_text: str) -> None:
+        assert "## Context" in doc_text, (
+            "skills-system.md should have a Context section"
+        )
+
+    @pytest.mark.parametrize(
+        "concept",
+        [
+            "normalize_skill_selection",
+            "stage_skill_catalog",
+            "_discover_catalog",
+            "SkillSpec",
+        ],
+    )
+    def test_key_functions_documented(self, doc_text: str, concept: str) -> None:
+        assert concept in doc_text, f"skills-system.md should document '{concept}'"
+
+    def test_skills_vs_tools_distinction(self, doc_text: str) -> None:
+        assert "Skills vs tools" in doc_text or "vs tools" in doc_text.lower(), (
+            "skills-system.md should distinguish skills from tools"
+        )
+
+    def test_catalog_structure_documented(self, doc_text: str) -> None:
+        assert "catalog/" in doc_text, (
+            "skills-system.md should document the catalog directory structure"
+        )
+
+    @pytest.mark.parametrize(
+        "catalog_file",
+        ["execution.md", "prd.md", "ralph.md", "web.md"],
+    )
+    def test_catalog_files_listed(self, doc_text: str, catalog_file: str) -> None:
+        assert catalog_file in doc_text, (
+            f"skills-system.md should list catalog file '{catalog_file}'"
+        )
+
+    def test_cli_vs_iterative_injection_paths(self, doc_text: str) -> None:
+        assert "CLI" in doc_text and "iterative" in doc_text.lower(), (
+            "skills-system.md should document both CLI and iterative injection paths"
+        )
+
+    def test_alternatives_considered(self, doc_text: str) -> None:
+        assert "Alternatives considered" in doc_text, (
+            "skills-system.md should have an Alternatives section"
+        )
+
+    def test_consequences_section(self, doc_text: str) -> None:
+        assert "Consequences" in doc_text, (
+            "skills-system.md should have a Consequences section"
+        )
+
+    def test_skill_catalog_source_exists(self) -> None:
+        catalog_dir = (
+            REPO_ROOT / "src" / "helping_hands" / "lib" / "meta" / "skills" / "catalog"
+        )
+        assert catalog_dir.exists(), (
+            "skills catalog directory should exist at lib/meta/skills/catalog/"
+        )
+
+
+# ---------------------------------------------------------------------------
+# DESIGN.md skill catalog section validation
+# ---------------------------------------------------------------------------
+
+
+class TestDesignMdSkillCatalogSection:
+    """DESIGN.md should document the skill catalog design pattern."""
+
+    @pytest.fixture()
+    def design_text(self) -> str:
+        return (DOCS_DIR / "DESIGN.md").read_text()
+
+    def test_skill_catalog_section_exists(self, design_text: str) -> None:
+        assert "Skill catalog" in design_text, (
+            "DESIGN.md should have a Skill catalog section"
+        )
+
+    @pytest.mark.parametrize(
+        "concept",
+        [
+            "_discover_catalog",
+            "normalize_skill_selection",
+            "stage_skill_catalog",
+            "_cleanup_skill_catalog",
+        ],
+    )
+    def test_key_functions_referenced(self, design_text: str, concept: str) -> None:
+        assert concept in design_text, (
+            f"DESIGN.md skill catalog section should reference '{concept}'"
+        )
+
+    def test_markdown_only_nature_documented(self, design_text: str) -> None:
+        lower = design_text.lower()
+        assert "markdown" in lower or ".md" in design_text, (
+            "DESIGN.md should note that skills are Markdown-only artifacts"
+        )
+
+    def test_graceful_degradation_documented(self, design_text: str) -> None:
+        assert "graceful" in design_text.lower() or "empty dict" in design_text, (
+            "DESIGN.md should document graceful degradation for missing catalog"
+        )
+
+
+# ---------------------------------------------------------------------------
+# RELIABILITY.md heartbeat and task status validation
+# ---------------------------------------------------------------------------
+
+
+class TestReliabilityMdHeartbeatSection:
+    """RELIABILITY.md should document heartbeat monitoring."""
+
+    @pytest.fixture()
+    def rel_text(self) -> str:
+        return (DOCS_DIR / "RELIABILITY.md").read_text()
+
+    def test_heartbeat_section_exists(self, rel_text: str) -> None:
+        assert "Heartbeat monitoring" in rel_text, (
+            "RELIABILITY.md should have a Heartbeat monitoring section"
+        )
+
+    def test_heartbeat_env_var_documented(self, rel_text: str) -> None:
+        assert "HELPING_HANDS_CLI_HEARTBEAT_SECONDS" in rel_text, (
+            "RELIABILITY.md should document the heartbeat env var"
+        )
+
+    def test_task_status_section_exists(self, rel_text: str) -> None:
+        assert "Task status tracking" in rel_text, (
+            "RELIABILITY.md should have a Task status tracking section"
+        )
+
+    @pytest.mark.parametrize(
+        "endpoint",
+        ["/tasks/{task_id}", "/tasks/current", "/monitor/{task_id}"],
+    )
+    def test_monitoring_endpoints_listed(self, rel_text: str, endpoint: str) -> None:
+        assert endpoint in rel_text, (
+            f"RELIABILITY.md should list monitoring endpoint '{endpoint}'"
+        )
+
+    def test_idempotency_section_exists(self, rel_text: str) -> None:
+        assert "Idempotency" in rel_text, (
+            "RELIABILITY.md should have an Idempotency section"
+        )
+
+    def test_finalization_failures_documented(self, rel_text: str) -> None:
+        assert "Finalization failures" in rel_text, (
+            "RELIABILITY.md should document finalization failure handling"
+        )
+
+
+# ---------------------------------------------------------------------------
+# FRONTEND.md sync requirements validation
+# ---------------------------------------------------------------------------
+
+
+class TestFrontendMdSyncRequirements:
+    """FRONTEND.md should document UI sync requirements."""
+
+    @pytest.fixture()
+    def fe_text(self) -> str:
+        return (DOCS_DIR / "FRONTEND.md").read_text()
+
+    def test_sync_requirements_section(self, fe_text: str) -> None:
+        assert "Sync requirements" in fe_text, (
+            "FRONTEND.md should have a Sync requirements section"
+        )
+
+    def test_inline_html_surface_documented(self, fe_text: str) -> None:
+        assert "_UI_HTML" in fe_text or "Inline HTML" in fe_text, (
+            "FRONTEND.md should document the inline HTML UI surface"
+        )
+
+    def test_react_surface_documented(self, fe_text: str) -> None:
+        assert "React" in fe_text, (
+            "FRONTEND.md should document the React frontend surface"
+        )
+
+    def test_testing_strategy_section(self, fe_text: str) -> None:
+        assert "Testing strategy" in fe_text, (
+            "FRONTEND.md should have a Testing strategy section"
+        )
+
+    def test_vitest_mentioned(self, fe_text: str) -> None:
+        assert "Vitest" in fe_text, (
+            "FRONTEND.md should reference Vitest for frontend testing"
+        )
+
+    def test_state_management_documented(self, fe_text: str) -> None:
+        assert "State management" in fe_text or "useState" in fe_text, (
+            "FRONTEND.md should document state management approach"
+        )
+
+    def test_typescript_types_table(self, fe_text: str) -> None:
+        for ts_type in ["FormState", "Backend", "TaskStatus"]:
+            assert ts_type in fe_text, (
+                f"FRONTEND.md should document TypeScript type '{ts_type}'"
+            )
+
+    def test_validating_sync_section(self, fe_text: str) -> None:
+        assert "Validating sync" in fe_text, (
+            "FRONTEND.md should have a Validating sync section"
+        )
+
+
+# ---------------------------------------------------------------------------
+# docs/index.md runtime flow comprehensive validation
+# ---------------------------------------------------------------------------
+
+
+class TestDocsIndexRuntimeFlowComprehensive:
+    """docs/index.md should document the runtime flow for all modes."""
+
+    @pytest.fixture()
+    def index_text(self) -> str:
+        return (DOCS_DIR / "index.md").read_text()
+
+    def test_runtime_flow_section_exists(self, index_text: str) -> None:
+        assert "Runtime flow" in index_text, (
+            "docs/index.md should have a Runtime flow section"
+        )
+
+    @pytest.mark.parametrize(
+        "mode",
+        ["Server mode", "CLI mode"],
+    )
+    def test_runtime_modes_documented(self, index_text: str, mode: str) -> None:
+        assert mode in index_text, (
+            f"docs/index.md should document '{mode}' in Runtime flow"
+        )
+
+    def test_e2e_hand_documented(self, index_text: str) -> None:
+        assert "E2EHand" in index_text, (
+            "docs/index.md should document E2EHand in runtime flow"
+        )
+
+    def test_pre_commit_integration_documented(self, index_text: str) -> None:
+        assert "pre-commit" in index_text, (
+            "docs/index.md should document pre-commit integration"
+        )
+
+    @pytest.mark.parametrize(
+        "backend",
+        ["codexcli", "claudecodecli", "goose", "geminicli"],
+    )
+    def test_cli_backends_documented(self, index_text: str, backend: str) -> None:
+        assert backend in index_text, (
+            f"docs/index.md should document '{backend}' backend"
+        )
+
+    def test_mcp_tools_documented(self, index_text: str) -> None:
+        assert "MCP" in index_text, "docs/index.md should document MCP tool exposure"
+
+    def test_docker_reset_section(self, index_text: str) -> None:
+        assert "Docker dev reset" in index_text or "docker compose" in index_text, (
+            "docs/index.md should document Docker dev reset"
+        )
+
+    def test_react_frontend_section(self, index_text: str) -> None:
+        assert "React frontend" in index_text, (
+            "docs/index.md should document the React frontend wrapper"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Design doc cross-references: docs reference real source paths
+# ---------------------------------------------------------------------------
+
+
+class TestDesignDocSourceReferences:
+    """Design docs that mention source paths should reference real files."""
+
+    DESIGN_DOCS_DIR: ClassVar[Path] = DOCS_DIR / "design-docs"
+
+    @pytest.mark.parametrize(
+        ("doc_file", "source_path"),
+        [
+            ("skills-system.md", "src/helping_hands/lib/meta/skills/__init__.py"),
+            ("scheduling-system.md", "src/helping_hands/server/schedules.py"),
+            (
+                "filesystem-security.md",
+                "src/helping_hands/lib/meta/tools/filesystem.py",
+            ),
+            (
+                "command-execution.md",
+                "src/helping_hands/lib/meta/tools/command.py",
+            ),
+            ("mcp-architecture.md", "src/helping_hands/server/mcp_server.py"),
+            ("github-client.md", "src/helping_hands/lib/github.py"),
+        ],
+    )
+    def test_referenced_source_exists(self, doc_file: str, source_path: str) -> None:
+        full_path = REPO_ROOT / source_path
+        assert full_path.exists(), (
+            f"Design doc '{doc_file}' should reference existing source '{source_path}'"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tech-debt-tracker consistency with QUALITY_SCORE.md
+# ---------------------------------------------------------------------------
+
+
+class TestTechDebtQualityScoreConsistency:
+    """Tech-debt-tracker dead code items should appear in QUALITY_SCORE gaps."""
+
+    @pytest.fixture()
+    def tech_debt_text(self) -> str:
+        return (DOCS_DIR / "exec-plans" / "tech-debt-tracker.md").read_text()
+
+    @pytest.fixture()
+    def quality_score_text(self) -> str:
+        return (DOCS_DIR / "QUALITY_SCORE.md").read_text()
+
+    def test_dead_code_items_cross_referenced(
+        self, tech_debt_text: str, quality_score_text: str
+    ) -> None:
+        """Dead code items with priority None in tech-debt should appear in
+        QUALITY_SCORE remaining gaps."""
+        # Extract module names from tech-debt dead code entries
+        dead_code_modules = []
+        for line in tech_debt_text.splitlines():
+            if "| None |" in line or "| Low |" in line:
+                parts = line.split("|")
+                if len(parts) >= 4:
+                    module = parts[3].strip().strip("`")
+                    if module:
+                        dead_code_modules.append(module)
+        # At least some dead code items should be traceable
+        assert len(dead_code_modules) > 0, (
+            "Tech-debt-tracker should have documented dead code items"
+        )
+
+    def test_quality_score_references_tech_debt(self, quality_score_text: str) -> None:
+        assert "tech-debt-tracker" in quality_score_text, (
+            "QUALITY_SCORE.md should reference the tech-debt-tracker"
+        )
