@@ -2,7 +2,7 @@ import { type Page } from "@playwright/test";
 
 /** Mock every backend API route so the frontend can render without a real server. */
 export async function mockApiRoutes(page: Page) {
-  await page.route("**/health", (route) =>
+  await page.route("**/health/services", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -15,7 +15,7 @@ export async function mockApiRoutes(page: Page) {
     }),
   );
 
-  await page.route("**/workers", (route) =>
+  await page.route("**/workers/capacity*", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -23,7 +23,7 @@ export async function mockApiRoutes(page: Page) {
     }),
   );
 
-  await page.route("**/monitor/current", (route) =>
+  await page.route("**/tasks/current*", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -67,7 +67,7 @@ export async function mockApiRoutes(page: Page) {
     });
   });
 
-  await page.route("**/claude-usage", (route) =>
+  await page.route("**/health/claude-usage*", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
