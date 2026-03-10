@@ -166,10 +166,10 @@ class TestBuildFailureMessage:
 
     def test_truncates_long_output(self) -> None:
         stub = _Stub()
-        long_output = "x" * 5000
+        long_output = "x" * 8000
         msg = stub._build_failure_message(return_code=1, output=long_output)
-        # Only last 2000 chars of output are included
-        assert len(msg) < 5000
+        # Only last _SUMMARY_CHAR_LIMIT (6000) chars of output are included
+        assert len(msg) < 8000
         assert "...[truncated]" not in msg  # it just takes the tail
 
 

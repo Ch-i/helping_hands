@@ -101,7 +101,7 @@ class _TwoPhaseCLIHand(Hand):
         appear before ``-p``/``--prompt`` and the prompt text itself.
         Some CLIs ignore flags that appear after the prompt argument.
         """
-        if not self.config.verbose or not self._VERBOSE_CLI_FLAGS:
+        if not self.config.verbose or not self._VERBOSE_CLI_FLAGS or not cmd:
             return cmd
         for flag in self._VERBOSE_CLI_FLAGS:
             if flag not in cmd:
@@ -305,7 +305,7 @@ class _TwoPhaseCLIHand(Hand):
         return env
 
     def _build_failure_message(self, *, return_code: int, output: str) -> str:
-        tail = output.strip()[-2000:]
+        tail = output.strip()[-self._SUMMARY_CHAR_LIMIT :]
         return f"{self._CLI_DISPLAY_NAME} failed (exit={return_code}). Output:\n{tail}"
 
     def _command_not_found_message(self, command: str) -> str:
