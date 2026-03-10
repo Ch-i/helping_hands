@@ -140,7 +140,7 @@ class ClaudeCodeHand(_TwoPhaseCLIHand):
     _CLI_DISPLAY_NAME = "Claude Code CLI"
     _COMMAND_ENV_VAR = "HELPING_HANDS_CLAUDE_CLI_CMD"
     _DEFAULT_CLI_CMD = "claude -p"
-    _DEFAULT_MODEL = ""
+    _DEFAULT_MODEL = "claude-opus-4-6"
     _DEFAULT_APPEND_ARGS = ("-p",)
     _CONTAINER_ENABLED_ENV_VAR = "HELPING_HANDS_CLAUDE_CONTAINER"
     _CONTAINER_IMAGE_ENV_VAR = "HELPING_HANDS_CLAUDE_CONTAINER_IMAGE"
@@ -293,6 +293,8 @@ class ClaudeCodeHand(_TwoPhaseCLIHand):
         *,
         emit: _TwoPhaseCLIHand._Emitter,
     ) -> str:
+        model = self._resolve_cli_model() or "(default)"
+        await emit(f"[{self._CLI_LABEL}] model={model}\n")
         cmd = self._render_command(prompt)
         cmd = self._inject_output_format(cmd, "stream-json")
         parser = _StreamJsonEmitter(emit, self._CLI_LABEL)
