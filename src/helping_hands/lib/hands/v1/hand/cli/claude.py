@@ -96,11 +96,22 @@ class _StreamJsonEmitter:
             self._result = event.get("result", "")
             cost = event.get("total_cost_usd")
             duration = event.get("duration_ms")
+            usage = event.get("usage")
             parts: list[str] = []
             if cost is not None:
                 parts.append(f"${cost:.4f}")
             if duration is not None:
                 parts.append(f"{duration / 1000:.1f}s")
+            if isinstance(usage, dict):
+                inp = usage.get("input_tokens")
+                out = usage.get("output_tokens")
+                if inp is not None or out is not None:
+                    tok_parts: list[str] = []
+                    if inp is not None:
+                        tok_parts.append(f"in={inp}")
+                    if out is not None:
+                        tok_parts.append(f"out={out}")
+                    parts.append(" ".join(tok_parts))
             if parts:
                 await self._emit(f"[{self._label}] api: {', '.join(parts)}\n")
 
@@ -126,6 +137,24 @@ class _StreamJsonEmitter:
         if name == "Grep":
             pattern = input_data.get("pattern", "")
             return f"Grep /{pattern}/"
+        if name == "Agent":
+            desc = input_data.get("description", "")
+            return f"Agent: {desc}" if desc else "Agent"
+        if name == "WebFetch":
+            url = input_data.get("url", "")
+            return f"WebFetch {url}"
+        if name == "WebSearch":
+            query = input_data.get("query", "")
+            return f"WebSearch {query!r}" if query else "WebSearch"
+        if name == "NotebookEdit":
+            path = input_data.get("notebook_path", "")
+            return f"NotebookEdit {path}"
+        if name == "TodoWrite":
+            return "TodoWrite"
+        if name == "MultiTool":
+            tool_uses = input_data.get("tool_uses", [])
+            count = len(tool_uses) if isinstance(tool_uses, list) else 0
+            return f"MultiTool ({count} tools)"
         return f"tool: {name}"
 
     def result_text(self) -> str:
