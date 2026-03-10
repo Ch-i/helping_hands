@@ -268,6 +268,18 @@ def _update_progress(
     update_state(state="PROGRESS", meta=meta)
 
 
+def _format_runtime(elapsed_seconds: float) -> str:
+    """Format an elapsed time as a human-readable string.
+
+    Returns ``"Xm Ys"`` when the elapsed time is at least one minute,
+    otherwise ``"X.Ys"``.
+    """
+    minutes, seconds = divmod(elapsed_seconds, 60)
+    if minutes >= 1:
+        return f"{int(minutes)}m {seconds:.0f}s"
+    return f"{seconds:.1f}s"
+
+
 async def _collect_stream(
     hand: Any,
     prompt: str,
@@ -665,11 +677,7 @@ def build_feature(
             )
         )
         hand_elapsed = time.monotonic() - hand_start
-        minutes, seconds = divmod(hand_elapsed, 60)
-        if minutes >= 1:
-            runtime_str = f"{int(minutes)}m {seconds:.0f}s"
-        else:
-            runtime_str = f"{seconds:.1f}s"
+        runtime_str = _format_runtime(hand_elapsed)
         _append_update(updates, f"Task complete. Runtime: {runtime_str}")
         return {
             "status": "ok",
