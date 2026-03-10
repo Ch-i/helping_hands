@@ -51,7 +51,9 @@ class _StreamJsonEmitter:
         if event_type == "assistant":
             # Claude Code stream-json: message is a full Anthropic API message
             # with message.content[] array of {type: "text"} / {type: "tool_use"}.
-            message = event.get("message", {})
+            message = event.get("message")
+            if not isinstance(message, dict):
+                return
             for block in message.get("content", []):
                 block_type = block.get("type", "")
                 if block_type == "tool_use":
@@ -71,7 +73,9 @@ class _StreamJsonEmitter:
 
         elif event_type == "user":
             # Tool results: message.content[] array of {type: "tool_result"}.
-            message = event.get("message", {})
+            message = event.get("message")
+            if not isinstance(message, dict):
+                return
             for block in message.get("content", []):
                 if block.get("type") != "tool_result":
                     continue
@@ -298,8 +302,10 @@ class ClaudeCodeHand(_TwoPhaseCLIHand):
         cmd = self._render_command(prompt)
         cmd = self._inject_output_format(cmd, "stream-json")
         parser = _StreamJsonEmitter(emit, self._CLI_LABEL)
-        raw = await self._invoke_cli_with_cmd(cmd, emit=parser)
-        await parser.flush()
+        try:
+            raw = await self._invoke_cli_with_cmd(cmd, emit=parser)
+        finally:
+            await parser.flush()
         return parser.result_text() or raw
 
     async def _invoke_backend(
