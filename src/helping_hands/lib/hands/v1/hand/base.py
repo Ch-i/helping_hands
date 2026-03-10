@@ -12,7 +12,6 @@ consistent regardless of which concrete hand class is selected.
 from __future__ import annotations
 
 import abc
-import contextlib
 import logging
 import os
 import re
@@ -467,8 +466,12 @@ class Hand(abc.ABC):
                 commit_sha=commit_sha,
                 stamp_utc=stamp,
             )
-        with contextlib.suppress(Exception):
+        try:
             gh.update_pr_body(repo, self.pr_number, body=pr_body)
+        except Exception:
+            logger.debug(
+                "Failed to update PR #%s description", self.pr_number, exc_info=True
+            )
 
     def _create_pr_for_diverged_branch(
         self,

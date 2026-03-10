@@ -6,9 +6,9 @@ Exposes an HTTP API that enqueues repo-building jobs via Celery.
 from __future__ import annotations
 
 import ast
-import contextlib
 import html
 import json
+import logging
 import os
 import subprocess
 from datetime import UTC, datetime
@@ -27,6 +27,8 @@ from helping_hands.lib.meta import skills as meta_skills
 from helping_hands.lib.meta.tools import registry as meta_tools
 from helping_hands.server.celery_app import build_feature, celery_app
 from helping_hands.server.task_result import normalize_task_result
+
+logger = logging.getLogger(__name__)
 
 # Lazy import for optional schedule dependencies
 _schedule_manager = None
@@ -353,8 +355,10 @@ def _fetch_claude_usage(*, force: bool = False) -> ClaudeUsageResponse:
             data = json.loads(resp.read().decode())
     except urllib_error.HTTPError as exc:
         body = ""
-        with contextlib.suppress(Exception):
+        try:
             body = exc.read().decode()[:200]
+        except Exception:
+            logger.debug("Failed to read HTTP error body", exc_info=True)
         return ClaudeUsageResponse(
             error=f"Usage API returned {exc.code}: {body}",
             fetched_at=now,
@@ -2927,6 +2931,55 @@ def enqueue_build(req: BuildRequest) -> BuildResponse:
     return _enqueue_build_task(req)
 
 
+def _build_form_redirect_query(
+    *,
+    repo_path: str,
+    prompt: str,
+    backend: str,
+    max_iterations: int,
+    error: str,
+    model: str | None = None,
+    no_pr: bool = False,
+    enable_execution: bool = False,
+    enable_web: bool = False,
+    use_native_cli_auth: bool = False,
+    fix_ci: bool = False,
+    ci_check_wait_minutes: float = 3.0,
+    pr_number: int | None = None,
+    tools: str | None = None,
+    skills: str | None = None,
+) -> dict[str, str]:
+    """Build the query dict for form error redirects back to the index page."""
+    query: dict[str, str] = {
+        "repo_path": repo_path,
+        "prompt": prompt,
+        "backend": backend,
+        "max_iterations": str(max_iterations),
+        "error": error,
+    }
+    if model:
+        query["model"] = model
+    if no_pr:
+        query["no_pr"] = "1"
+    if enable_execution:
+        query["enable_execution"] = "1"
+    if enable_web:
+        query["enable_web"] = "1"
+    if use_native_cli_auth:
+        query["use_native_cli_auth"] = "1"
+    if fix_ci:
+        query["fix_ci"] = "1"
+    if ci_check_wait_minutes != 3.0:
+        query["ci_check_wait_minutes"] = str(ci_check_wait_minutes)
+    if pr_number is not None:
+        query["pr_number"] = str(pr_number)
+    if tools and tools.strip():
+        query["tools"] = tools
+    if skills and skills.strip():
+        query["skills"] = skills
+    return query
+
+
 @app.post("/build/form")
 def enqueue_build_form(
     repo_path: str = Form(...),
@@ -2948,33 +3001,23 @@ def enqueue_build_form(
     try:
         validated_backend = _parse_backend(backend)
     except ValueError as exc:
-        query: dict[str, str] = {
-            "repo_path": repo_path,
-            "prompt": prompt,
-            "backend": backend,
-            "max_iterations": str(max_iterations),
-            "error": str(exc),
-        }
-        if model:
-            query["model"] = model
-        if no_pr:
-            query["no_pr"] = "1"
-        if enable_execution:
-            query["enable_execution"] = "1"
-        if enable_web:
-            query["enable_web"] = "1"
-        if use_native_cli_auth:
-            query["use_native_cli_auth"] = "1"
-        if fix_ci:
-            query["fix_ci"] = "1"
-        if ci_check_wait_minutes != 3.0:
-            query["ci_check_wait_minutes"] = str(ci_check_wait_minutes)
-        if pr_number is not None:
-            query["pr_number"] = str(pr_number)
-        if tools and tools.strip():
-            query["tools"] = tools
-        if skills and skills.strip():
-            query["skills"] = skills
+        query = _build_form_redirect_query(
+            repo_path=repo_path,
+            prompt=prompt,
+            backend=backend,
+            max_iterations=max_iterations,
+            error=str(exc),
+            model=model,
+            no_pr=no_pr,
+            enable_execution=enable_execution,
+            enable_web=enable_web,
+            use_native_cli_auth=use_native_cli_auth,
+            fix_ci=fix_ci,
+            ci_check_wait_minutes=ci_check_wait_minutes,
+            pr_number=pr_number,
+            tools=tools,
+            skills=skills,
+        )
         return RedirectResponse(url=f"/?{urlencode(query)}", status_code=303)
 
     try:
@@ -3004,33 +3047,23 @@ def enqueue_build_form(
                 if isinstance(maybe_msg, str):
                     error_msg = maybe_msg
 
-        query: dict[str, str] = {
-            "repo_path": repo_path,
-            "prompt": prompt,
-            "backend": backend,
-            "max_iterations": str(max_iterations),
-            "error": error_msg,
-        }
-        if model:
-            query["model"] = model
-        if no_pr:
-            query["no_pr"] = "1"
-        if enable_execution:
-            query["enable_execution"] = "1"
-        if enable_web:
-            query["enable_web"] = "1"
-        if use_native_cli_auth:
-            query["use_native_cli_auth"] = "1"
-        if fix_ci:
-            query["fix_ci"] = "1"
-        if ci_check_wait_minutes != 3.0:
-            query["ci_check_wait_minutes"] = str(ci_check_wait_minutes)
-        if pr_number is not None:
-            query["pr_number"] = str(pr_number)
-        if tools and tools.strip():
-            query["tools"] = tools
-        if skills and skills.strip():
-            query["skills"] = skills
+        query = _build_form_redirect_query(
+            repo_path=repo_path,
+            prompt=prompt,
+            backend=backend,
+            max_iterations=max_iterations,
+            error=error_msg,
+            model=model,
+            no_pr=no_pr,
+            enable_execution=enable_execution,
+            enable_web=enable_web,
+            use_native_cli_auth=use_native_cli_auth,
+            fix_ci=fix_ci,
+            ci_check_wait_minutes=ci_check_wait_minutes,
+            pr_number=pr_number,
+            tools=tools,
+            skills=skills,
+        )
         return RedirectResponse(url=f"/?{urlencode(query)}", status_code=303)
 
     response = _enqueue_build_task(req)
@@ -3160,14 +3193,18 @@ def _get_schedule_manager():
 
 def _schedule_to_response(task) -> ScheduleResponse:
     """Convert a ScheduledTask to a ScheduleResponse."""
-    import contextlib
-
     from helping_hands.server.schedules import next_run_time
 
     next_run = None
     if task.enabled:
-        with contextlib.suppress(Exception):
+        try:
             next_run = next_run_time(task.cron_expression).isoformat()
+        except Exception:
+            logger.debug(
+                "Failed to calculate next run for schedule %s",
+                getattr(task, "schedule_id", "?"),
+                exc_info=True,
+            )
 
     return ScheduleResponse(
         schedule_id=task.schedule_id,

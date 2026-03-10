@@ -68,7 +68,14 @@ class _TwoPhaseCLIHand(Hand):
 
     def _base_command(self) -> list[str]:
         raw = os.environ.get(self._COMMAND_ENV_VAR, self._DEFAULT_CLI_CMD)
-        tokens = shlex.split(raw)
+        try:
+            tokens = shlex.split(raw)
+        except ValueError as exc:
+            msg = (
+                f"{self._COMMAND_ENV_VAR} contains an invalid shell expression"
+                f" ({raw!r}): {exc}"
+            )
+            raise RuntimeError(msg) from exc
         if not tokens:
             msg = f"{self._COMMAND_ENV_VAR} resolved to an empty command."
             raise RuntimeError(msg)
