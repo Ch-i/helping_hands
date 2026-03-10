@@ -43,8 +43,8 @@ app = FastAPI(
 class BuildRequest(BaseModel):
     """Request body for the /build endpoint."""
 
-    repo_path: str
-    prompt: str
+    repo_path: str = Field(max_length=500)
+    prompt: str = Field(max_length=50_000)
     backend: Literal[
         "e2e",
         "basic-langgraph",
@@ -57,7 +57,7 @@ class BuildRequest(BaseModel):
         "geminicli",
         "opencodecli",
     ] = "claudecodecli"
-    model: str | None = None
+    model: str | None = Field(default=None, max_length=200)
     max_iterations: int = Field(default=6, ge=1, le=100)
     no_pr: bool = False
     enable_execution: bool = False
@@ -170,12 +170,13 @@ class ScheduleRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     cron_expression: str = Field(
         min_length=1,
+        max_length=100,
         description="Cron expression (e.g., '0 0 * * *') or preset name",
     )
-    repo_path: str
-    prompt: str
+    repo_path: str = Field(max_length=500)
+    prompt: str = Field(max_length=50_000)
     backend: BackendName = "claudecodecli"
-    model: str | None = None
+    model: str | None = Field(default=None, max_length=200)
     max_iterations: int = Field(default=6, ge=1, le=100)
     pr_number: int | None = None
     no_pr: bool = False

@@ -268,8 +268,20 @@ class _TwoPhaseCLIHand(Hand):
         try:
             value = float(raw.strip())
         except ValueError:
+            logger.warning(
+                "%s has non-numeric value %r, using default %s",
+                name,
+                raw,
+                default,
+            )
             return default
         if value <= 0:
+            logger.warning(
+                "%s has non-positive value %s, using default %s",
+                name,
+                value,
+                default,
+            )
             return default
         return value
 
