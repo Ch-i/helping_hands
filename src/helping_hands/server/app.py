@@ -308,6 +308,7 @@ def _get_claude_oauth_token() -> str | None:
             # Maybe stored as plain token
             return raw if raw.startswith("ey") else None
     except Exception:
+        logger.debug("Failed to read Claude OAuth token from Keychain", exc_info=True)
         return None
 
 
@@ -2316,6 +2317,7 @@ def _check_redis_health() -> Literal["ok", "error"]:
         r.ping()
         return "ok"
     except Exception:
+        logger.debug("Redis health check failed", exc_info=True)
         return "error"
 
 
@@ -2330,6 +2332,7 @@ def _check_db_health() -> Literal["ok", "error", "na"]:
         conn.close()
         return "ok"
     except Exception:
+        logger.debug("Database health check failed", exc_info=True)
         return "error"
 
 
@@ -2339,6 +2342,7 @@ def _check_workers_health() -> Literal["ok", "error"]:
         ping = inspector.ping()
         return "ok" if ping else "error"
     except Exception:
+        logger.debug("Workers health check failed", exc_info=True)
         return "error"
 
 
@@ -3120,7 +3124,7 @@ def _resolve_worker_capacity() -> WorkerCapacityResponse:
                         if isinstance(concurrency, int) and concurrency > 0:
                             per_worker[worker_name] = concurrency
     except Exception:
-        pass
+        logger.debug("Failed to resolve worker capacity", exc_info=True)
 
     if per_worker:
         return WorkerCapacityResponse(

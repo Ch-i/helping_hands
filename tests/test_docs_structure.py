@@ -1446,26 +1446,33 @@ class TestDockerSandboxDesignDoc:
 
 
 class TestConsolidatedPlanCoverage:
-    """Consolidated 2026-03-06.md should cover all versions from that date."""
+    """Week-10 consolidation should cover all daily summaries (Mar 3-7)."""
 
     @pytest.fixture()
     def content(self) -> str:
-        return (DOCS_DIR / "exec-plans" / "completed" / "2026-03-06.md").read_text()
+        return (
+            DOCS_DIR / "exec-plans" / "completed" / "2026" / "Week-10.md"
+        ).read_text()
 
-    def test_covers_v32_through_v79(self, content: str) -> None:
-        """Consolidated plan should reference v32-v79 in header."""
-        assert "v32-v79" in content
+    def test_covers_mar_6_v32_v79(self, content: str) -> None:
+        """Week-10 should reference Mar 6 edge cases and design docs."""
+        assert "v32" in content
+        assert "v79" in content
 
-    def test_has_v69_entry(self, content: str) -> None:
-        assert "## v69" in content
+    def test_covers_all_days(self, content: str) -> None:
+        """Week-10 should have entries for each day Mar 3-7."""
+        assert "Mar 3" in content
+        assert "Mar 4" in content
+        assert "Mar 5" in content
+        assert "Mar 6" in content
+        assert "Mar 7" in content
 
-    def test_has_v79_entry(self, content: str) -> None:
-        assert "## v79" in content
-
-    def test_v69_through_v79_all_present(self, content: str) -> None:
-        for v in range(69, 80):
-            assert f"## v{v}" in content, (
-                f"Consolidated 2026-03-06.md is missing ## v{v} entry"
+    def test_daily_files_removed(self) -> None:
+        """Individual daily files should not exist after weekly consolidation."""
+        for day in range(3, 8):
+            daily = DOCS_DIR / "exec-plans" / "completed" / f"2026-03-0{day}.md"
+            assert not daily.exists(), (
+                f"Daily file {daily.name} should be removed after Week-10 consolidation"
             )
 
 
@@ -1538,21 +1545,23 @@ class TestCommandExecutionDesignDoc:
         assert "format_tool_instructions_for_cli" in content
 
 
-class TestConsolidated20260307:
-    """Consolidated 2026-03-07 plan should cover completed plans."""
+class TestWeek10ConsolidatedContent:
+    """Week-10 should cover v80+ from Mar 7."""
 
     @pytest.fixture()
     def content(self) -> str:
-        path = DOCS_DIR / "exec-plans" / "completed" / "2026-03-07.md"
-        if not path.exists():
-            pytest.skip("2026-03-07.md not yet created")
-        return path.read_text()
+        return (
+            DOCS_DIR / "exec-plans" / "completed" / "2026" / "Week-10.md"
+        ).read_text()
 
     def test_covers_v80(self, content: str) -> None:
         assert "v80" in content
 
-    def test_has_date_header(self, content: str) -> None:
-        assert "2026-03-07" in content
+    def test_has_week_header(self, content: str) -> None:
+        assert "Week 10" in content
+
+    def test_has_mar_7_section(self, content: str) -> None:
+        assert "Mar 7" in content
 
 
 # ---------------------------------------------------------------------------

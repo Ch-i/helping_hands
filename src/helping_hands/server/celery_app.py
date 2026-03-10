@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import re
 import shutil
@@ -14,6 +15,8 @@ from tempfile import mkdtemp
 from typing import Any
 
 from celery import Celery
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_celery_urls() -> tuple[str, str]:
@@ -905,7 +908,7 @@ def ensure_usage_schedule() -> None:
             if existing:
                 return  # already registered
         except Exception:
-            pass  # doesn't exist yet
+            logger.debug("Usage schedule entry not found, creating", exc_info=True)
 
         entry = RedBeatSchedulerEntry(
             name=entry_name,
@@ -915,7 +918,10 @@ def ensure_usage_schedule() -> None:
         )
         entry.save()
     except Exception:
-        pass  # best-effort; Redis or redbeat may not be available
+        logger.debug(
+            "Failed to register usage schedule (Redis/redbeat unavailable)",
+            exc_info=True,
+        )
 
 
 @celery_app.on_after_finalize.connect  # ty: ignore[unresolved-attribute]
