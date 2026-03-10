@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 test("switching to world view shows Hand World", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("tab", { name: "Hand world" }).click();
-  await expect(page.getByText("Hand World")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hand World" })).toBeVisible();
 });
 
 test("world view shows factory scene with stations and player", async ({ page }) => {
@@ -33,11 +33,11 @@ test("switching back to classic view hides the factory", async ({ page }) => {
   await page.goto("/");
   // Go to world view
   await page.getByRole("tab", { name: "Hand world" }).click();
-  await expect(page.getByText("Hand World")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hand World" })).toBeVisible();
 
   // Go back to classic
   await page.getByRole("tab", { name: "Classic view" }).click();
-  await expect(page.getByText("Hand World")).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hand World" })).not.toBeVisible();
   await expect(page.locator("input.repo-input")).toBeVisible();
 });
 
