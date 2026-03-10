@@ -918,6 +918,6 @@ def ensure_usage_schedule() -> None:
         pass  # best-effort; Redis or redbeat may not be available
 
 
-@celery_app.on_after_finalize.connect
+@celery_app.on_after_finalize.connect  # ty: ignore[unresolved-attribute]
 def _setup_periodic_tasks(sender: Any, **_kwargs: Any) -> None:
     ensure_usage_schedule()
