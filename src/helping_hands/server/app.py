@@ -56,7 +56,7 @@ class BuildRequest(BaseModel):
         "opencodecli",
     ] = "claudecodecli"
     model: str | None = None
-    max_iterations: int = 6
+    max_iterations: int = Field(default=6, ge=1, le=100)
     no_pr: bool = False
     enable_execution: bool = False
     enable_web: bool = False
@@ -174,7 +174,7 @@ class ScheduleRequest(BaseModel):
     prompt: str
     backend: BackendName = "claudecodecli"
     model: str | None = None
-    max_iterations: int = Field(default=6, ge=1)
+    max_iterations: int = Field(default=6, ge=1, le=100)
     pr_number: int | None = None
     no_pr: bool = False
     enable_execution: bool = False

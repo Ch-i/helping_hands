@@ -23,13 +23,13 @@ def resolve_repo_target(repo_root: Path, rel_path: str) -> Path:
     root = repo_root.resolve()
     normalized = normalize_relative_path(rel_path)
     if not normalized or normalized.startswith("/"):
-        raise ValueError("invalid path")
+        raise ValueError("path must be a non-empty relative path")
 
     target = (root / normalized).resolve()
     try:
         target.relative_to(root)
     except ValueError as exc:
-        raise ValueError("invalid path") from exc
+        raise ValueError("path escapes repository root") from exc
     return target
 
 

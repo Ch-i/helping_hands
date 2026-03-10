@@ -103,6 +103,22 @@ def _run_command(command: list[str], *, cwd: Path, timeout_s: int) -> CommandRes
             stderr=stderr,
             timed_out=True,
         )
+    except FileNotFoundError:
+        return CommandResult(
+            command=command,
+            cwd=str(cwd),
+            exit_code=127,
+            stdout="",
+            stderr=f"command not found: {command[0]}",
+        )
+    except OSError as exc:
+        return CommandResult(
+            command=command,
+            cwd=str(cwd),
+            exit_code=126,
+            stdout="",
+            stderr=f"cannot execute command: {exc}",
+        )
 
     return CommandResult(
         command=command,

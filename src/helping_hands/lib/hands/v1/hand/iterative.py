@@ -206,8 +206,8 @@ class _BasicIterativeHand(Hand):
                     f"@@READ_RESULT: {rel_path}\nERROR: file is not UTF-8 text"
                 )
                 continue
-            except ValueError:
-                chunks.append(f"@@READ_RESULT: {rel_path}\nERROR: invalid path")
+            except ValueError as exc:
+                chunks.append(f"@@READ_RESULT: {rel_path}\nERROR: {exc}")
                 continue
             except FileNotFoundError:
                 chunks.append(f"@@READ_RESULT: {rel_path}\nERROR: file not found")

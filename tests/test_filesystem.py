@@ -55,19 +55,19 @@ class TestResolveRepoTarget:
         assert target == tmp_path / "src" / "main.py"
 
     def test_rejects_absolute_path(self, tmp_path: Path) -> None:
-        with pytest.raises(ValueError, match="invalid path"):
+        with pytest.raises(ValueError, match="non-empty relative path"):
             resolve_repo_target(tmp_path, "/etc/passwd")
 
     def test_rejects_empty_path(self, tmp_path: Path) -> None:
-        with pytest.raises(ValueError, match="invalid path"):
+        with pytest.raises(ValueError, match="non-empty relative path"):
             resolve_repo_target(tmp_path, "")
 
     def test_rejects_traversal(self, tmp_path: Path) -> None:
-        with pytest.raises(ValueError, match="invalid path"):
+        with pytest.raises(ValueError, match="escapes repository root"):
             resolve_repo_target(tmp_path, "../../../etc/passwd")
 
     def test_rejects_dot_dot_within_path(self, tmp_path: Path) -> None:
-        with pytest.raises(ValueError, match="invalid path"):
+        with pytest.raises(ValueError, match="escapes repository root"):
             resolve_repo_target(tmp_path, "src/../../etc/passwd")
 
     def test_normalizes_dot_slash(self, tmp_path: Path) -> None:
@@ -166,3 +166,32 @@ class TestPathExists:
 
     def test_traversal_returns_false(self, tmp_path: Path) -> None:
         assert path_exists(tmp_path, "../../../etc/passwd") is False
+
+
+class TestResolveRepoTargetErrorMessages:
+    """Verify that empty/absolute vs traversal produce distinct error messages."""
+
+    def test_empty_path_message_differs_from_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="non-empty relative path"):
+            resolve_repo_target(tmp_path, "")
+
+    def test_absolute_path_message_differs_from_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="non-empty relative path"):
+            resolve_repo_target(tmp_path, "/etc/passwd")
+
+    def test_whitespace_only_path_message(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="non-empty relative path"):
+            resolve_repo_target(tmp_path, "   ")
+
+    def test_traversal_mentions_repository_root(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="escapes repository root"):
+            resolve_repo_target(tmp_path, "../../../etc/passwd")
+
+    def test_embedded_traversal_mentions_repository_root(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="escapes repository root"):
+            resolve_repo_target(tmp_path, "a/b/../../../../etc/passwd")
+
+    def test_dot_slash_only_is_non_empty_relative(self, tmp_path: Path) -> None:
+        # "./" normalizes to "" which triggers the non-empty check
+        with pytest.raises(ValueError, match="non-empty relative path"):
+            resolve_repo_target(tmp_path, "./")

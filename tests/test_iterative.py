@@ -762,10 +762,13 @@ class TestExecuteReadRequestsErrors:
 
     def test_value_error_on_invalid_path(self, tmp_path):
         hand = _make_hand(tmp_path, {"good.txt": "hello"})
-        with patch(self._PATCH_TARGET, side_effect=ValueError("invalid path")):
+        with patch(
+            self._PATCH_TARGET,
+            side_effect=ValueError("path escapes repository root"),
+        ):
             result = hand._execute_read_requests("@@READ: ../evil.py\n")
         assert "@@READ_RESULT: ../evil.py" in result
-        assert "ERROR: invalid path" in result
+        assert "ERROR: path escapes repository root" in result
 
     def test_file_not_found(self, tmp_path):
         hand = _make_hand(tmp_path)

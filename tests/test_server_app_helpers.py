@@ -629,3 +629,52 @@ class TestSafeInspectCall:
         inspector = MagicMock()
         inspector.active.side_effect = RuntimeError("timeout")
         assert _safe_inspect_call(inspector, "active") is None
+
+
+# --- BuildRequest max_iterations validation ---
+
+
+class TestBuildRequestMaxIterations:
+    """Validate max_iterations bounds (ge=1, le=100)."""
+
+    def test_default_is_six(self) -> None:
+        from helping_hands.server.app import BuildRequest
+
+        req = BuildRequest(repo_path="/tmp/repo", prompt="test")
+        assert req.max_iterations == 6
+
+    def test_accepts_one(self) -> None:
+        from helping_hands.server.app import BuildRequest
+
+        req = BuildRequest(repo_path="/tmp/repo", prompt="test", max_iterations=1)
+        assert req.max_iterations == 1
+
+    def test_accepts_hundred(self) -> None:
+        from helping_hands.server.app import BuildRequest
+
+        req = BuildRequest(repo_path="/tmp/repo", prompt="test", max_iterations=100)
+        assert req.max_iterations == 100
+
+    def test_rejects_zero(self) -> None:
+        from pydantic import ValidationError
+
+        from helping_hands.server.app import BuildRequest
+
+        with pytest.raises(ValidationError, match="max_iterations"):
+            BuildRequest(repo_path="/tmp/repo", prompt="test", max_iterations=0)
+
+    def test_rejects_negative(self) -> None:
+        from pydantic import ValidationError
+
+        from helping_hands.server.app import BuildRequest
+
+        with pytest.raises(ValidationError, match="max_iterations"):
+            BuildRequest(repo_path="/tmp/repo", prompt="test", max_iterations=-5)
+
+    def test_rejects_over_hundred(self) -> None:
+        from pydantic import ValidationError
+
+        from helping_hands.server.app import BuildRequest
+
+        with pytest.raises(ValidationError, match="max_iterations"):
+            BuildRequest(repo_path="/tmp/repo", prompt="test", max_iterations=101)
