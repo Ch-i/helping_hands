@@ -429,6 +429,10 @@ class _TwoPhaseCLIHand(Hand):
             check=False,
         )
         if result.returncode != 0:
+            logger.debug(
+                "git status check failed (code=%d); assuming no changes",
+                result.returncode,
+            )
             return False
         return bool(result.stdout.strip())
 

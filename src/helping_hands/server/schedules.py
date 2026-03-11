@@ -194,7 +194,8 @@ def validate_cron_expression(cron_expr: str) -> str:
         cron_expr = CRON_PRESETS[cron_expr]
 
     # Validate using croniter
-    assert croniter is not None  # guaranteed by _check_croniter above
+    if croniter is None:
+        raise RuntimeError("croniter unavailable after _check_croniter")
     try:
         croniter(cron_expr)
     except (ValueError, KeyError) as exc:
@@ -219,7 +220,8 @@ def next_run_time(cron_expr: str, base_time: datetime | None = None) -> datetime
     if base_time is None:
         base_time = datetime.now(UTC)
 
-    assert croniter is not None  # guaranteed by _check_croniter above
+    if croniter is None:
+        raise RuntimeError("croniter unavailable after _check_croniter")
     cron = croniter(cron_expr, base_time)
     return cron.get_next(datetime)
 
@@ -332,7 +334,8 @@ class ScheduleManager:
             day_of_week=day_of_week,
         )
 
-        assert RedBeatSchedulerEntry is not None  # guaranteed by _check_redbeat
+        if RedBeatSchedulerEntry is None:
+            raise RuntimeError("RedBeatSchedulerEntry unavailable after _check_redbeat")
         entry = RedBeatSchedulerEntry(
             name=f"helping_hands:scheduled:{task.schedule_id}",
             task="helping_hands.scheduled_build",
@@ -346,7 +349,10 @@ class ScheduleManager:
         """Delete the RedBeat scheduler entry."""
         entry_name = f"helping_hands:scheduled:{schedule_id}"
         try:
-            assert RedBeatSchedulerEntry is not None  # guaranteed by _check_redbeat
+            if RedBeatSchedulerEntry is None:
+                raise RuntimeError(
+                    "RedBeatSchedulerEntry unavailable after _check_redbeat"
+                )
             entry = RedBeatSchedulerEntry.from_key(
                 f"redbeat:{entry_name}", app=self._app
             )

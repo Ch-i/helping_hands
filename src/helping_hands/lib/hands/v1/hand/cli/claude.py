@@ -158,6 +158,25 @@ class _StreamJsonEmitter:
             tool_uses = input_data.get("tool_uses", [])
             count = len(tool_uses) if isinstance(tool_uses, list) else 0
             return f"MultiTool ({count} tools)"
+        if name == "Skill":
+            skill = input_data.get("skill", "")
+            return f"Skill: {skill}" if skill else "Skill"
+        if name == "CronCreate":
+            prompt = input_data.get("prompt", "")
+            if len(prompt) > 80:
+                prompt = prompt[:77] + "..."
+            return f"CronCreate {prompt!r}" if prompt else "CronCreate"
+        if name == "CronDelete":
+            cron_id = input_data.get("id", "")
+            return f"CronDelete {cron_id}" if cron_id else "CronDelete"
+        if name == "CronList":
+            return "CronList"
+        if name == "EnterWorktree":
+            wt_name = input_data.get("name", "")
+            return f"EnterWorktree {wt_name}" if wt_name else "EnterWorktree"
+        if name == "ExitWorktree":
+            action = input_data.get("action", "")
+            return f"ExitWorktree {action}" if action else "ExitWorktree"
         return f"tool: {name}"
 
     def result_text(self) -> str:

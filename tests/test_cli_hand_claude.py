@@ -1206,6 +1206,70 @@ class TestSummarizeTool:
         assert _StreamJsonEmitter._summarize_tool("Glob", {}) == "Glob "
         assert _StreamJsonEmitter._summarize_tool("Grep", {}) == "Grep //"
 
+    # v123 — new tool type summarizations
+
+    def test_skill_tool(self) -> None:
+        assert (
+            _StreamJsonEmitter._summarize_tool("Skill", {"skill": "commit"})
+            == "Skill: commit"
+        )
+
+    def test_skill_tool_no_skill(self) -> None:
+        assert _StreamJsonEmitter._summarize_tool("Skill", {}) == "Skill"
+
+    def test_cron_create_tool(self) -> None:
+        assert (
+            _StreamJsonEmitter._summarize_tool(
+                "CronCreate", {"prompt": "run tests every hour"}
+            )
+            == "CronCreate 'run tests every hour'"
+        )
+
+    def test_cron_create_tool_truncates_long_prompt(self) -> None:
+        long_prompt = "x" * 100
+        result = _StreamJsonEmitter._summarize_tool(
+            "CronCreate", {"prompt": long_prompt}
+        )
+        assert result.startswith("CronCreate '")
+        assert result.endswith("...'")
+
+    def test_cron_create_tool_no_prompt(self) -> None:
+        assert _StreamJsonEmitter._summarize_tool("CronCreate", {}) == "CronCreate"
+
+    def test_cron_delete_tool(self) -> None:
+        assert (
+            _StreamJsonEmitter._summarize_tool("CronDelete", {"id": "abc123"})
+            == "CronDelete abc123"
+        )
+
+    def test_cron_delete_tool_no_id(self) -> None:
+        assert _StreamJsonEmitter._summarize_tool("CronDelete", {}) == "CronDelete"
+
+    def test_cron_list_tool(self) -> None:
+        assert _StreamJsonEmitter._summarize_tool("CronList", {}) == "CronList"
+
+    def test_enter_worktree_tool(self) -> None:
+        assert (
+            _StreamJsonEmitter._summarize_tool(
+                "EnterWorktree", {"name": "feature-branch"}
+            )
+            == "EnterWorktree feature-branch"
+        )
+
+    def test_enter_worktree_tool_no_name(self) -> None:
+        assert (
+            _StreamJsonEmitter._summarize_tool("EnterWorktree", {}) == "EnterWorktree"
+        )
+
+    def test_exit_worktree_tool(self) -> None:
+        assert (
+            _StreamJsonEmitter._summarize_tool("ExitWorktree", {"action": "merge"})
+            == "ExitWorktree merge"
+        )
+
+    def test_exit_worktree_tool_no_action(self) -> None:
+        assert _StreamJsonEmitter._summarize_tool("ExitWorktree", {}) == "ExitWorktree"
+
 
 # ---------------------------------------------------------------------------
 # _inject_output_format edge cases

@@ -423,3 +423,16 @@ class TestRepoHasChanges:
         stub = _Stub()
         stub.repo_index = SimpleNamespace(root=tmp_path)
         assert stub._repo_has_changes() is False
+
+    def test_git_status_failure_logs_debug(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """v123: git status failure emits debug log with return code."""
+        import logging
+
+        stub = _Stub()
+        stub.repo_index = SimpleNamespace(root=tmp_path)
+        with caplog.at_level(logging.DEBUG):
+            result = stub._repo_has_changes()
+        assert result is False
+        assert any("git status check failed" in r.message for r in caplog.records)
