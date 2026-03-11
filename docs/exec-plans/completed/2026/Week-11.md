@@ -1,6 +1,6 @@
 # Week 11 (Mar 10 – Mar 11, 2026)
 
-Hardening and code quality week. DRY extraction, assert cleanup, input validation, defensive guards, debug logging, test isolation fixes, git operation hardening, type safety, boilerplate line coverage, web helper test coverage. Grew from 3031 to 3300 backend tests.
+Hardening and code quality week. DRY extraction, assert cleanup, input validation, defensive guards, debug logging, test isolation fixes, git operation hardening, type safety, boilerplate line coverage, web helper test coverage, frontend form validation. Grew from 3031 to 3304 backend tests, 153 to 178 frontend tests.
 
 ---
 
@@ -36,4 +36,10 @@ Added debug logging (`logger.debug("run_async raised non-AssertionError", exc_in
 
 ---
 
-**Week summary:** Systematic hardening across the codebase. Replaced all remaining `assert` statements in production code with explicit guards. Added debug logging to all silent exception handlers (including the final two bare re-raises in atomic.py/iterative.py in v129). Expanded Claude CLI tool summarization. Consolidated validators via mixin extraction. Added input validation to MCP server tools and server request models. Hardened git subprocess operations with timeout protection and input format validation. Added type annotations and test coverage for previously untested helpers. Added empty-string rejection to server request models and mutual exclusivity validation to bash script runner. Hardened AI provider message normalization and model validation. Added comprehensive test coverage for GooseCLIHand._build_subprocess_env (v129).
+## Mar 11 (cont.) — Defensive CI response handling and frontend validation (v130)
+
+Replaced direct key access with defensive `.get()` defaults in `_poll_ci_checks()` and `_ci_fix_loop()` for GitHub API responses (`result["conclusion"]` → `result.get("conclusion", "pending")`, `check_result["total_count"]` → `check_result.get("total_count", 0)`) to prevent `KeyError` on malformed payloads. Added frontend form validation: `submitRun()` now validates repo_path/prompt emptiness before API call, `saveSchedule()` validates name/cron/repo_path/prompt. Exported and tested `statusBlinkerColor()` (7 tests: ok/fail/run/idle tones). Added backend tests for malformed CI responses (7 tests) and frontend form validation component tests (2 tests). **3304 backend tests (unchanged), 169 → 178 frontend tests.**
+
+---
+
+**Week summary:** Systematic hardening across the codebase. Replaced all remaining `assert` statements in production code with explicit guards. Added debug logging to all silent exception handlers (including the final two bare re-raises in atomic.py/iterative.py in v129). Expanded Claude CLI tool summarization. Consolidated validators via mixin extraction. Added input validation to MCP server tools and server request models. Hardened git subprocess operations with timeout protection and input format validation. Added type annotations and test coverage for previously untested helpers. Added empty-string rejection to server request models and mutual exclusivity validation to bash script runner. Hardened AI provider message normalization and model validation. Added comprehensive test coverage for GooseCLIHand._build_subprocess_env (v129). Added defensive `.get()` for CI response handling and frontend form validation (v130).

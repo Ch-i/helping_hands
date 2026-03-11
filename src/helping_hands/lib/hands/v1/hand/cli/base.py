@@ -793,7 +793,7 @@ class _TwoPhaseCLIHand(Hand):
         deadline = time.monotonic() + max_poll_seconds
         while time.monotonic() < deadline:
             result = gh.get_check_runs(repo, ref)
-            conclusion = result["conclusion"]
+            conclusion = result.get("conclusion", "pending")
             if conclusion not in ("pending", "no_checks"):
                 return result
             await emit(
@@ -891,8 +891,8 @@ class _TwoPhaseCLIHand(Hand):
                         max_poll_seconds=max_poll,
                     )
 
-                    conclusion = check_result["conclusion"]
-                    total = check_result["total_count"]
+                    conclusion = check_result.get("conclusion", "pending")
+                    total = check_result.get("total_count", 0)
 
                     if conclusion == "success":
                         await emit(

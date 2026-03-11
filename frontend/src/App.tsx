@@ -491,7 +491,7 @@ export function parseBool(value: string | null): boolean {
   return value === "1" || value === "true";
 }
 
-function statusBlinkerColor(status: string): string {
+export function statusBlinkerColor(status: string): string {
   const tone = statusTone(status);
   if (tone === "ok") return "var(--success)";
   if (tone === "fail") return "var(--danger)";
@@ -1977,15 +1977,22 @@ export default function App() {
   const submitRun = async (event: FormEvent) => {
     event.preventDefault();
 
+    const repoPath = form.repo_path.trim();
+    const prompt = form.prompt.trim();
+    if (!repoPath || !prompt) {
+      setStatus("error");
+      setPayload({ error: "Repository path and prompt are required." });
+      setUpdates(["Error: Repository path and prompt are required."]);
+      return;
+    }
+
     setStatus("submitting");
     setMainView("monitor");
     setPayload(null);
     setUpdates([]);
-
-    const repoPath = form.repo_path.trim();
     const body: Record<string, unknown> = {
       repo_path: repoPath,
-      prompt: form.prompt.trim(),
+      prompt,
       backend: form.backend,
       max_iterations: form.max_iterations,
       no_pr: form.no_pr,
@@ -2124,11 +2131,20 @@ export default function App() {
     event.preventDefault();
     setScheduleError(null);
 
+    const name = scheduleForm.name.trim();
+    const cronExpr = scheduleForm.cron_expression.trim();
+    const schedRepoPath = scheduleForm.repo_path.trim();
+    const schedPrompt = scheduleForm.prompt.trim();
+    if (!name || !cronExpr || !schedRepoPath || !schedPrompt) {
+      setScheduleError("Name, cron expression, repository path, and prompt are required.");
+      return;
+    }
+
     const body: Record<string, unknown> = {
-      name: scheduleForm.name.trim(),
-      cron_expression: scheduleForm.cron_expression.trim(),
-      repo_path: scheduleForm.repo_path.trim(),
-      prompt: scheduleForm.prompt.trim(),
+      name,
+      cron_expression: cronExpr,
+      repo_path: schedRepoPath,
+      prompt: schedPrompt,
       backend: scheduleForm.backend,
       max_iterations: scheduleForm.max_iterations,
       no_pr: scheduleForm.no_pr,

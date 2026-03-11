@@ -382,6 +382,53 @@ describe("Form submission", () => {
   });
 });
 
+describe("Form validation", () => {
+  it("shows error when repo_path is empty on submit", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    render(<App />);
+
+    // Clear the default repo_path
+    const repoInput = screen.getByDisplayValue(
+      "suryarastogi/helping_hands"
+    ) as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: "   " } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    // fetch should NOT have been called — validation should catch it
+    const buildCalls = fetchSpy.mock.calls.filter(
+      (call: unknown[]) => typeof call[0] === "string" && (call[0] as string).includes("/build")
+    );
+    expect(buildCalls).toHaveLength(0);
+  });
+
+  it("shows error when prompt is empty on submit", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    render(<App />);
+
+    // Clear the prompt textarea by finding it via its default value
+    const promptTextarea = screen.getByDisplayValue(
+      "Update README.md with results of your smoke test. Keep changes minimal and safe."
+    ) as HTMLTextAreaElement;
+    fireEvent.change(promptTextarea, { target: { value: "" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Run"));
+    });
+
+    const buildCalls = fetchSpy.mock.calls.filter(
+      (call: unknown[]) => typeof call[0] === "string" && (call[0] as string).includes("/build")
+    );
+    expect(buildCalls).toHaveLength(0);
+  });
+});
+
 describe("Monitor view", () => {
   async function submitAndEnterMonitor() {
     const mockFetch = mockFetchResponses({
