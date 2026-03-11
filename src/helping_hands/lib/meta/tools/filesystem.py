@@ -21,6 +21,8 @@ def normalize_relative_path(rel_path: str) -> str:
 def resolve_repo_target(repo_root: Path, rel_path: str) -> Path:
     """Resolve a relative path inside ``repo_root`` or raise ``ValueError``."""
     root = repo_root.resolve()
+    if not root.is_dir():
+        raise ValueError("repo_root must be an existing directory")
     normalized = normalize_relative_path(rel_path)
     if not normalized or normalized.startswith("/"):
         raise ValueError("path must be a non-empty relative path")

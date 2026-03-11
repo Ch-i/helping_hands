@@ -408,6 +408,9 @@ class Hand(abc.ABC):
         try:
             token_user = gh.whoami().get("login", "")
         except Exception:
+            logger.debug(
+                "whoami() failed; skipping PR description update", exc_info=True
+            )
             token_user = ""
         if pr_creator and token_user and pr_creator == token_user:
             self._update_pr_description(
@@ -668,7 +671,12 @@ class Hand(abc.ABC):
                     if getattr(repo_obj, "default_branch", ""):
                         base_branch = str(repo_obj.default_branch)
                 except Exception:
-                    pass
+                    logger.debug(
+                        "could not fetch default branch for %s, using %r",
+                        repo,
+                        base_branch,
+                        exc_info=True,
+                    )
 
                 stamp = datetime.now(UTC).replace(microsecond=0).isoformat()
 

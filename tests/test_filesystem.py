@@ -195,3 +195,22 @@ class TestResolveRepoTargetErrorMessages:
         # "./" normalizes to "" which triggers the non-empty check
         with pytest.raises(ValueError, match="non-empty relative path"):
             resolve_repo_target(tmp_path, "./")
+
+
+class TestResolveRepoTargetRootValidation:
+    """Verify that resolve_repo_target rejects non-directory repo_root."""
+
+    def test_rejects_nonexistent_root(self, tmp_path: Path) -> None:
+        fake_root = tmp_path / "does-not-exist"
+        with pytest.raises(ValueError, match="existing directory"):
+            resolve_repo_target(fake_root, "file.txt")
+
+    def test_rejects_file_as_root(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "a-file.txt"
+        file_path.write_text("hello")
+        with pytest.raises(ValueError, match="existing directory"):
+            resolve_repo_target(file_path, "file.txt")
+
+    def test_accepts_valid_directory_root(self, tmp_path: Path) -> None:
+        target = resolve_repo_target(tmp_path, "file.txt")
+        assert target == tmp_path / "file.txt"
