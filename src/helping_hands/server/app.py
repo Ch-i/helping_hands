@@ -84,8 +84,8 @@ class _ToolSkillValidatorMixin(BaseModel):
 class BuildRequest(_ToolSkillValidatorMixin):
     """Request body for the /build endpoint."""
 
-    repo_path: str = Field(max_length=500)
-    prompt: str = Field(max_length=50_000)
+    repo_path: str = Field(min_length=1, max_length=500)
+    prompt: str = Field(min_length=1, max_length=50_000)
     backend: Literal[
         "e2e",
         "basic-langgraph",
@@ -184,8 +184,8 @@ class ScheduleRequest(_ToolSkillValidatorMixin):
         max_length=100,
         description="Cron expression (e.g., '0 0 * * *') or preset name",
     )
-    repo_path: str = Field(max_length=500)
-    prompt: str = Field(max_length=50_000)
+    repo_path: str = Field(min_length=1, max_length=500)
+    prompt: str = Field(min_length=1, max_length=50_000)
     backend: BackendName = "claudecodecli"
     model: str | None = Field(default=None, max_length=200)
     max_iterations: int = Field(default=6, ge=1, le=100)

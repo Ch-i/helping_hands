@@ -1,6 +1,6 @@
 # Week 11 (Mar 10 – Mar 11, 2026)
 
-Hardening and code quality week. DRY extraction, assert cleanup, input validation, defensive guards, debug logging, test isolation fixes, git operation hardening, type safety, boilerplate line coverage. Grew from 3031 to 3278 backend tests.
+Hardening and code quality week. DRY extraction, assert cleanup, input validation, defensive guards, debug logging, test isolation fixes, git operation hardening, type safety, boilerplate line coverage, web helper test coverage. Grew from 3031 to 3300 backend tests.
 
 ---
 
@@ -16,6 +16,10 @@ DRY validator extraction (`_ToolSkillValidatorMixin` with `max_length=50`), NaN-
 
 Added `ScheduleManager` return type annotation to `_get_schedule_manager()` in `server/app.py` with `TYPE_CHECKING` import and typed module-level variable. Added `_MAX_GIT_TIMEOUT` (3600s) upper bound cap to `_git_timeout()` in `lib/github.py` with warning log for values exceeding the cap. Added direct test coverage for `_is_boilerplate_line()` in `pr_description.py` (bracket banners, numbered lists, bullets, all 18 boilerplate prefixes, case insensitivity, non-boilerplate lines). Consolidated daily plan files (2026-03-10, 2026-03-11) already present in Week-11. **3243 → 3278 tests (backend).**
 
+## Mar 11 (cont.) — Input validation hardening and web helper test coverage (v126)
+
+Added `min_length=1` to `BuildRequest` and `ScheduleRequest` `repo_path` and `prompt` fields to reject empty strings. Added mutual exclusivity validation to `_run_bash_script` in registry.py (exactly one of `script_path`/`inline_script` required). Added direct test coverage for `_as_string_keyed_dict` (5 tests: valid dict, empty dict, non-dict types, non-string keys, mixed keys) and `_require_http_url` host validation (6 tests: no host, with port, ftp scheme, whitespace stripping). **3278 → 3300 tests (backend).**
+
 ---
 
-**Week summary:** Systematic hardening across the codebase. Replaced all remaining `assert` statements in production code with explicit guards. Added debug logging to all silent exception handlers. Expanded Claude CLI tool summarization. Consolidated validators via mixin extraction. Added input validation to MCP server tools and server request models. Hardened git subprocess operations with timeout protection and input format validation. Added type annotations and test coverage for previously untested helpers.
+**Week summary:** Systematic hardening across the codebase. Replaced all remaining `assert` statements in production code with explicit guards. Added debug logging to all silent exception handlers. Expanded Claude CLI tool summarization. Consolidated validators via mixin extraction. Added input validation to MCP server tools and server request models. Hardened git subprocess operations with timeout protection and input format validation. Added type annotations and test coverage for previously untested helpers. Added empty-string rejection to server request models and mutual exclusivity validation to bash script runner.
