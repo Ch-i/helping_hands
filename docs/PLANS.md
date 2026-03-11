@@ -8,6 +8,8 @@ _No active plans._
 
 ## Completed plans
 
+- [2026-03-11 v127](exec-plans/completed/2026-03-11.md) --
+  Input validation hardening for AI providers and server helpers: normalize_messages non-Mapping rejection, AIProvider empty-model guard, _parse_task_kwargs_str max-size guard; 3310 tests
 - [2026-03-11 v125-v126](exec-plans/completed/2026-03-11.md) --
   Type safety, timeout bounds, _is_boilerplate_line tests, input validation hardening (min_length on server requests, bash script mutual exclusivity) and web helper test coverage; 3300 tests
 - [2026-03-11 Week 11](exec-plans/completed/2026/Week-11.md) --

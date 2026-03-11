@@ -2461,10 +2461,20 @@ def _coerce_optional_str(value: Any) -> str | None:
     return text or None
 
 
+_MAX_TASK_KWARGS_LEN = 1_000_000  # 1 MB — reject unreasonably large payloads
+
+
 def _parse_task_kwargs_str(raw: str) -> dict[str, Any]:
     """Parse kwargs strings from Flower/Celery payloads into a mapping."""
     text = raw.strip()
     if not text:
+        return {}
+    if len(text) > _MAX_TASK_KWARGS_LEN:
+        logger.warning(
+            "Task kwargs string exceeds %d chars (%d), skipping parse",
+            _MAX_TASK_KWARGS_LEN,
+            len(text),
+        )
         return {}
     try:
         json_payload = json.loads(text)

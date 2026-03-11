@@ -22,4 +22,10 @@ Added `min_length=1` to `BuildRequest` and `ScheduleRequest` `repo_path` and `pr
 
 ---
 
-**Week summary:** Systematic hardening across the codebase. Replaced all remaining `assert` statements in production code with explicit guards. Added debug logging to all silent exception handlers. Expanded Claude CLI tool summarization. Consolidated validators via mixin extraction. Added input validation to MCP server tools and server request models. Hardened git subprocess operations with timeout protection and input format validation. Added type annotations and test coverage for previously untested helpers. Added empty-string rejection to server request models and mutual exclusivity validation to bash script runner.
+## Mar 11 (cont.) — AI provider and server helper input validation (v127)
+
+Hardened `normalize_messages()` in `ai_providers/types.py` to reject non-Mapping items in message sequences with a clear `TypeError` (previously crashed with `AttributeError` on `.get()`). Added empty-model `ValueError` guard to `AIProvider.complete()` to prevent silent failures when no model is specified and `default_model` is empty/whitespace. Added `_MAX_TASK_KWARGS_LEN` (1MB) size guard to `_parse_task_kwargs_str()` in `server/app.py` with warning log, preventing parsing of unreasonably large payloads. **3300 → 3310 tests (backend).**
+
+---
+
+**Week summary:** Systematic hardening across the codebase. Replaced all remaining `assert` statements in production code with explicit guards. Added debug logging to all silent exception handlers. Expanded Claude CLI tool summarization. Consolidated validators via mixin extraction. Added input validation to MCP server tools and server request models. Hardened git subprocess operations with timeout protection and input format validation. Added type annotations and test coverage for previously untested helpers. Added empty-string rejection to server request models and mutual exclusivity validation to bash script runner. Hardened AI provider message normalization and model validation.

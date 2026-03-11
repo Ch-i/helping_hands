@@ -11,6 +11,7 @@ import pytest
 pytest.importorskip("fastapi")
 
 from helping_hands.server.app import (
+    _MAX_TASK_KWARGS_LEN,
     _coerce_optional_str,
     _extract_task_id,
     _extract_task_kwargs,
@@ -222,6 +223,25 @@ class TestParseTaskKwargsStr:
 
     def test_json_list_ignored(self) -> None:
         assert _parse_task_kwargs_str("[1, 2, 3]") == {}
+
+    def test_oversized_payload_returns_empty(self) -> None:
+        """Payloads exceeding _MAX_TASK_KWARGS_LEN are rejected."""
+        oversized = '{"k": "' + "x" * (_MAX_TASK_KWARGS_LEN + 1) + '"}'
+        assert _parse_task_kwargs_str(oversized) == {}
+
+    def test_at_limit_payload_is_parsed(self) -> None:
+        """Payloads exactly at the limit are accepted."""
+        # Build a valid JSON dict that's at the limit
+        padding = "a" * (_MAX_TASK_KWARGS_LEN - 12)  # account for {"k":"..."}
+        at_limit = '{"k":"' + padding + '"}'
+        assert len(at_limit.strip()) <= _MAX_TASK_KWARGS_LEN
+        result = _parse_task_kwargs_str(at_limit)
+        assert result == {"k": padding}
+
+    def test_max_task_kwargs_len_constant(self) -> None:
+        """The constant is a reasonable positive value."""
+        assert _MAX_TASK_KWARGS_LEN > 0
+        assert _MAX_TASK_KWARGS_LEN == 1_000_000
 
 
 # --- _is_helping_hands_task ---
