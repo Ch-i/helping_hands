@@ -9,7 +9,7 @@ _No active plans._
 ## Completed plans
 
 - [2026-03-11 v131](exec-plans/completed/2026-03-11.md) --
-  Network error handling (URLError/HTTPError → RuntimeError) in search_web/browse_url, clone() depth validation, Google provider empty messages guard; 3321 passing tests (3353 total including 32 skipped)
+  Network error handling (URLError/HTTPError → RuntimeError) in search_web/browse_url, clone() depth validation, Google provider empty messages guard; 3353 tests (3321 passing, 32 skipped)
 - [2026-03-11 v130](exec-plans/completed/2026-03-11.md) --
   Defensive CI response handling (.get() defaults), frontend form validation (submitRun/saveSchedule emptiness checks), statusBlinkerColor test coverage; 3482 tests (3304+ backend, 178 frontend)
 - [2026-03-11 v129](exec-plans/completed/2026-03-11.md) --
