@@ -8,6 +8,8 @@ _No active plans._
 
 ## Completed plans
 
+- [2026-03-11 v132](exec-plans/completed/2026-03-11.md) --
+  CLI model None guard (_resolve_cli_model treats "None" as default), _resolve_worker_capacity env var test coverage (13 tests), LangGraph run/build_agent/stream test gaps (5 tests); 3361 tests (3328 passing, 33 skipped)
 - [2026-03-11 v131](exec-plans/completed/2026-03-11.md) --
   Network error handling (URLError/HTTPError → RuntimeError) in search_web/browse_url, clone() depth validation, Google provider empty messages guard; 3353 tests (3321 passing, 32 skipped)
 - [2026-03-11 v130](exec-plans/completed/2026-03-11.md) --

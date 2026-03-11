@@ -78,6 +78,11 @@ class TestResolveCliModel:
         stub = _Stub(model="a/b/c")
         assert stub._resolve_cli_model() == "b/c"
 
+    def test_none_model_returns_backend_model(self) -> None:
+        """str(None) produces 'None'; should fall back to _DEFAULT_MODEL."""
+        stub = _Stub(model=None)
+        assert stub._resolve_cli_model() == "stub-model-1"
+
 
 # ---------------------------------------------------------------------------
 # _inject_prompt_argument (static)

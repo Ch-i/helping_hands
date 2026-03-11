@@ -83,7 +83,7 @@ class _TwoPhaseCLIHand(Hand):
 
     def _resolve_cli_model(self) -> str:
         model = str(self.config.model).strip()
-        if not model or model == "default":
+        if not model or model in ("default", "None"):
             return self._DEFAULT_MODEL
         if "/" in model:
             _, _, provider_model = model.partition("/")
