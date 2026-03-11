@@ -8,6 +8,9 @@ _No active plans._
 
 ## Completed plans
 
+- [2026-03-11 v134](exec-plans/completed/2026-03-11.md) --
+  _parse_str_list empty/whitespace string rejection (registry.py + iterative.py), _load_env_files tilde expansion test coverage, _collect_celery_current_tasks direct test coverage (7 tests); 3780 passing tests (+ 14 new)
+
 - [2026-03-11 v133](exec-plans/completed/2026-03-11.md) --
   Warning logging for silent env var fallbacks (_timeout_seconds/_diff_char_limit), git-not-found handling in _get_diff/_get_uncommitted_diff, write_text_file OSError wrapping; 3369 tests (3336 passing, 33 skipped)
 

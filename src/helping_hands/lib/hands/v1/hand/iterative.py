@@ -249,7 +249,10 @@ class _BasicIterativeHand(Hand):
         for value in raw:
             if not isinstance(value, str):
                 raise ValueError(f"{key} must contain only strings")
-            values.append(value)
+            stripped = value.strip()
+            if not stripped:
+                raise ValueError(f"{key} contains empty or whitespace-only strings")
+            values.append(stripped)
         return values
 
     @staticmethod

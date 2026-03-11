@@ -13,6 +13,7 @@ pytest.importorskip("fastapi")
 from helping_hands.server.app import (
     _MAX_TASK_KWARGS_LEN,
     _coerce_optional_str,
+    _collect_celery_current_tasks,
     _extract_task_id,
     _extract_task_kwargs,
     _extract_task_name,
@@ -698,3 +699,158 @@ class TestBuildRequestMaxIterations:
 
         with pytest.raises(ValidationError, match="max_iterations"):
             BuildRequest(repo_path="/tmp/repo", prompt="test", max_iterations=101)
+
+
+# --- _collect_celery_current_tasks ---
+
+
+class TestCollectCeleryCurrentTasks:
+    """Direct tests for the _collect_celery_current_tasks orchestrator."""
+
+    def _make_task_entry(
+        self,
+        task_id: str = "abc-123",
+        name: str = "helping_hands.build_feature",
+        state: str | None = None,
+        repo_path: str = "/tmp/repo",
+        backend: str = "basic-langgraph",
+    ) -> dict:
+        entry: dict = {
+            "id": task_id,
+            "name": name,
+            "kwargs": f'{{"repo_path": "{repo_path}", "backend": "{backend}"}}',
+        }
+        if state:
+            entry["state"] = state
+        return entry
+
+    def test_returns_empty_when_inspector_is_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When celery_app.control.inspect() returns None, returns []."""
+        mock_control = MagicMock()
+        mock_control.inspect.return_value = None
+        monkeypatch.setattr(
+            "helping_hands.server.app.celery_app",
+            MagicMock(control=mock_control),
+        )
+        assert _collect_celery_current_tasks() == []
+
+    def test_collects_active_task(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Active tasks are collected with STARTED status."""
+        entry = self._make_task_entry(task_id="task-1")
+        inspector = MagicMock()
+        inspector.active.return_value = {"worker1": [entry]}
+        inspector.reserved.return_value = {}
+        inspector.scheduled.return_value = {}
+        mock_control = MagicMock()
+        mock_control.inspect.return_value = inspector
+        monkeypatch.setattr(
+            "helping_hands.server.app.celery_app",
+            MagicMock(control=mock_control),
+        )
+
+        result = _collect_celery_current_tasks()
+        assert len(result) == 1
+        assert result[0]["task_id"] == "task-1"
+        assert result[0]["status"] == "STARTED"
+
+    def test_collects_reserved_task_with_received_status(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Reserved tasks get RECEIVED as default status."""
+        entry = self._make_task_entry(task_id="task-2")
+        inspector = MagicMock()
+        inspector.active.return_value = {}
+        inspector.reserved.return_value = {"worker1": [entry]}
+        inspector.scheduled.return_value = {}
+        mock_control = MagicMock()
+        mock_control.inspect.return_value = inspector
+        monkeypatch.setattr(
+            "helping_hands.server.app.celery_app",
+            MagicMock(control=mock_control),
+        )
+
+        result = _collect_celery_current_tasks()
+        assert len(result) == 1
+        assert result[0]["status"] == "RECEIVED"
+
+    def test_skips_non_helping_hands_tasks(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Tasks with non-helping_hands names are filtered out."""
+        entry = self._make_task_entry(task_id="task-3", name="some.other.task")
+        inspector = MagicMock()
+        inspector.active.return_value = {"worker1": [entry]}
+        inspector.reserved.return_value = {}
+        inspector.scheduled.return_value = {}
+        mock_control = MagicMock()
+        mock_control.inspect.return_value = inspector
+        monkeypatch.setattr(
+            "helping_hands.server.app.celery_app",
+            MagicMock(control=mock_control),
+        )
+
+        assert _collect_celery_current_tasks() == []
+
+    def test_skips_entries_without_task_id(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Entries missing an id field are skipped."""
+        entry = {
+            "name": "helping_hands.server.celery_app.build_feature",
+            "kwargs": "{}",
+        }
+        inspector = MagicMock()
+        inspector.active.return_value = {"worker1": [entry]}
+        inspector.reserved.return_value = {}
+        inspector.scheduled.return_value = {}
+        mock_control = MagicMock()
+        mock_control.inspect.return_value = inspector
+        monkeypatch.setattr(
+            "helping_hands.server.app.celery_app",
+            MagicMock(control=mock_control),
+        )
+
+        assert _collect_celery_current_tasks() == []
+
+    def test_deduplicates_across_inspect_shapes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Same task_id appearing in active and reserved yields one entry."""
+        entry = self._make_task_entry(task_id="dup-1")
+        inspector = MagicMock()
+        inspector.active.return_value = {"worker1": [entry]}
+        inspector.reserved.return_value = {"worker1": [entry]}
+        inspector.scheduled.return_value = {}
+        mock_control = MagicMock()
+        mock_control.inspect.return_value = inspector
+        monkeypatch.setattr(
+            "helping_hands.server.app.celery_app",
+            MagicMock(control=mock_control),
+        )
+
+        result = _collect_celery_current_tasks()
+        assert len(result) == 1
+        assert result[0]["task_id"] == "dup-1"
+
+    def test_status_fallback_for_invalid_state(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When entry has a state not in _CURRENT_TASK_STATES, uses default."""
+        entry = self._make_task_entry(task_id="task-4", state="SUCCESS")
+        inspector = MagicMock()
+        inspector.active.return_value = {"worker1": [entry]}
+        inspector.reserved.return_value = {}
+        inspector.scheduled.return_value = {}
+        mock_control = MagicMock()
+        mock_control.inspect.return_value = inspector
+        monkeypatch.setattr(
+            "helping_hands.server.app.celery_app",
+            MagicMock(control=mock_control),
+        )
+
+        result = _collect_celery_current_tasks()
+        assert len(result) == 1
+        # SUCCESS is not in _CURRENT_TASK_STATES, falls back to "STARTED"
+        assert result[0]["status"] == "STARTED"

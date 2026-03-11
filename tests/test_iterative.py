@@ -217,6 +217,19 @@ class TestParseStrList:
         with pytest.raises(ValueError, match="must contain only strings"):
             _BasicIterativeHand._parse_str_list({"paths": [1, 2]}, key="paths")
 
+    def test_rejects_empty_string_items(self):
+        with pytest.raises(ValueError, match="empty or whitespace-only"):
+            _BasicIterativeHand._parse_str_list({"paths": ["a.py", ""]}, key="paths")
+
+    def test_rejects_whitespace_only_items(self):
+        with pytest.raises(ValueError, match="empty or whitespace-only"):
+            _BasicIterativeHand._parse_str_list({"paths": ["  "]}, key="paths")
+
+    def test_strips_whitespace_from_items(self):
+        assert _BasicIterativeHand._parse_str_list(
+            {"paths": [" a.py ", " b.py "]}, key="paths"
+        ) == ["a.py", "b.py"]
+
 
 # ---------------------------------------------------------------------------
 # _parse_positive_int
